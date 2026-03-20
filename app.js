@@ -46,6 +46,10 @@ document.addEventListener("DOMContentLoaded", function () {
     registerSW();
     renderMetaDiaria();
     initEditor();
+    atualizarFormRef();
+    renderRefsSalvas();
+    renderLeituraHistorico();
+    renderCheat();
 });
 
 // ===== CONFIRM DIALOG =====
@@ -91,6 +95,9 @@ function mostrarSecao(nome, e) {
     if (nome === "notas") { atualizarSelectsMaterias(); renderNotas(); }
     if (nome === "pomodoro") renderPomodoroStats();
     if (nome === "editor") { atualizarLinhas(); atualizarSnippetsSelect(); }
+    if (nome === "refs") { atualizarFormRef(); renderRefsSalvas(); }
+    if (nome === "leitura") renderLeituraHistorico();
+    if (nome === "cheat") renderCheat();
 }
 
 function mostrarSecaoDirect(nome) {
@@ -437,7 +444,7 @@ var BACKUP_KEYS = [
     "hubias_favoritos", "hubias_historico", "hubias_prompts",
     "hubias_notas", "hubias_materias", "hubias_links",
     "hubias_flashcards", "hubias_decks", "hubias_planos",
-    "hubias_pomodoro", "hubias_snippets", "hubias_meta_diaria",
+    "hubias_pomodoro", "hubias_snippets", "hubias_meta_diaria", "hubias_refs", "hubias_leitura",
     "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python"
 ];
 
@@ -1189,6 +1196,421 @@ function playSound() {
             osc.stop(ctx.currentTime + delay / 1000 + 0.3);
         });
     } catch (e) { /* browser sem suporte */ }
+}
+
+// ===== CALCULADORA CIENTIFICA =====
+function calcular() {
+    var input = document.getElementById("calcInput").value.trim();
+    if (!input) return;
+    var resultado = document.getElementById("calcResultado");
+    try {
+        // Replace math functions with Math equivalents
+        var expr = input
+            .replace(/\bsqrt\b/g, "Math.sqrt").replace(/\babs\b/g, "Math.abs")
+            .replace(/\bpow\b/g, "Math.pow").replace(/\blog\b(?!2|10)/g, "Math.log")
+            .replace(/\blog2\b/g, "Math.log2").replace(/\blog10\b/g, "Math.log10")
+            .replace(/\bsin\b/g, "Math.sin").replace(/\bcos\b/g, "Math.cos")
+            .replace(/\btan\b/g, "Math.tan").replace(/\basin\b/g, "Math.asin")
+            .replace(/\bacos\b/g, "Math.acos").replace(/\batan\b/g, "Math.atan")
+            .replace(/\bceil\b/g, "Math.ceil").replace(/\bfloor\b/g, "Math.floor")
+            .replace(/\bround\b/g, "Math.round").replace(/\brandom\b/g, "Math.random")
+            .replace(/\bPI\b/g, "Math.PI").replace(/\bE\b/g, "Math.E")
+            .replace(/\^/g, "**");
+        // Safety: only allow math chars
+        if (/[^0-9+\-*/.()%,\s\w]/.test(expr.replace(/Math\.\w+/g, ""))) throw new Error("Expressao invalida");
+        var val = new Function("return (" + expr + ")")();
+        resultado.textContent = val;
+        // Historico
+        var hist = document.getElementById("calcHistorico");
+        var item = document.createElement("div");
+        item.className = "calc-historico-item";
+        item.innerHTML = "<span>" + esc(input) + "</span><span>= " + val + "</span>";
+        hist.insertBefore(item, hist.firstChild);
+        if (hist.children.length > 20) hist.removeChild(hist.lastChild);
+    } catch (e) {
+        resultado.textContent = "Erro: " + e.message;
+        resultado.style.color = "#f87171";
+        setTimeout(function () { resultado.style.color = "#10b981"; }, 2000);
+    }
+}
+
+function converterBase() {
+    var input = document.getElementById("calcBaseInput").value.trim();
+    var container = document.getElementById("calcBaseResult");
+    if (!input) return;
+    try {
+        var num;
+        if (input.indexOf("0x") === 0 || input.indexOf("0X") === 0) num = parseInt(input, 16);
+        else if (input.indexOf("0b") === 0 || input.indexOf("0B") === 0) num = parseInt(input.substring(2), 2);
+        else if (input.indexOf("0o") === 0 || input.indexOf("0O") === 0) num = parseInt(input.substring(2), 8);
+        else num = parseInt(input, 10);
+        if (isNaN(num)) throw new Error("Numero invalido");
+        container.innerHTML =
+            '<div class="calc-base-item"><span>Decimal</span><span>' + num + '</span></div>' +
+            '<div class="calc-base-item"><span>Binario</span><span>0b' + num.toString(2) + '</span></div>' +
+            '<div class="calc-base-item"><span>Octal</span><span>0o' + num.toString(8) + '</span></div>' +
+            '<div class="calc-base-item"><span>Hexadecimal</span><span>0x' + num.toString(16).toUpperCase() + '</span></div>' +
+            '<div class="calc-base-item"><span>ASCII</span><span>' + (num >= 32 && num <= 126 ? String.fromCharCode(num) : "N/A") + '</span></div>';
+    } catch (e) { container.innerHTML = '<p style="color:#f87171;font-size:0.85rem;">Numero invalido</p>'; }
+}
+
+// Click to insert ref functions
+document.addEventListener("click", function (e) {
+    if (e.target.matches(".calc-ref code")) {
+        var input = document.getElementById("calcInput");
+        var fn = e.target.textContent;
+        input.value += fn.indexOf("(") !== -1 ? fn : fn + "(";
+        input.focus();
+    }
+});
+
+// ===== GERADOR DE REFERENCIAS =====
+function atualizarFormRef() {
+    var tipo = document.getElementById("refTipo").value;
+    var extra = document.getElementById("refCamposExtra");
+    var campos = {
+        livro: '<label>Editora</label><input type="text" id="refEditora" placeholder="Nome da editora"><label>Edicao</label><input type="text" id="refEdicao" placeholder="Ex: 3. ed."><label>Cidade</label><input type="text" id="refCidade" placeholder="Sao Paulo">',
+        artigo: '<label>Nome do Periodico</label><input type="text" id="refPeriodico" placeholder="Revista/Journal"><label>Volume / Numero</label><input type="text" id="refVolume" placeholder="v. 10, n. 2"><label>Paginas</label><input type="text" id="refPaginas" placeholder="p. 15-30">',
+        site: '<label>URL</label><input type="text" id="refUrl" placeholder="https://..."><label>Data de Acesso</label><input type="text" id="refAcesso" placeholder="20 mar. 2026">',
+        tcc: '<label>Tipo</label><input type="text" id="refTipoTcc" placeholder="Dissertacao (Mestrado)"><label>Instituicao</label><input type="text" id="refInstituicao" placeholder="Universidade..."><label>Cidade</label><input type="text" id="refCidade" placeholder="Sao Paulo">'
+    };
+    extra.innerHTML = campos[tipo] || "";
+}
+
+function gerarReferencia(formato) {
+    var tipo = document.getElementById("refTipo").value;
+    var autor = document.getElementById("refAutor").value.trim();
+    var titulo = document.getElementById("refTitulo").value.trim();
+    var ano = document.getElementById("refAno").value.trim();
+    if (!autor || !titulo) { toast("Preencha pelo menos autor e titulo!"); return; }
+
+    var ref = "";
+    var getVal = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
+
+    if (formato === "abnt") {
+        if (tipo === "livro") {
+            ref = autor.toUpperCase() + ". <strong>" + titulo + "</strong>. " + (getVal("refEdicao") ? getVal("refEdicao") + " " : "") + (getVal("refCidade") ? getVal("refCidade") + ": " : "") + (getVal("refEditora") ? getVal("refEditora") + ", " : "") + ano + ".";
+        } else if (tipo === "artigo") {
+            ref = autor.toUpperCase() + ". " + titulo + ". <strong>" + getVal("refPeriodico") + "</strong>, " + (getVal("refVolume") ? getVal("refVolume") + ", " : "") + (getVal("refPaginas") ? getVal("refPaginas") + ", " : "") + ano + ".";
+        } else if (tipo === "site") {
+            ref = autor.toUpperCase() + ". <strong>" + titulo + "</strong>. " + ano + ". Disponivel em: " + getVal("refUrl") + ". Acesso em: " + (getVal("refAcesso") || "___") + ".";
+        } else if (tipo === "tcc") {
+            ref = autor.toUpperCase() + ". <strong>" + titulo + "</strong>. " + ano + ". " + (getVal("refTipoTcc") || "Trabalho") + " - " + (getVal("refInstituicao") || "Instituicao") + ", " + (getVal("refCidade") || "Cidade") + ", " + ano + ".";
+        }
+    } else {
+        // APA
+        var autorAPA = autor.replace(/;/g, " &");
+        if (tipo === "livro") {
+            ref = autorAPA + " (" + ano + "). <em>" + titulo + "</em>" + (getVal("refEdicao") ? " (" + getVal("refEdicao") + ")" : "") + ". " + (getVal("refEditora") || "") + ".";
+        } else if (tipo === "artigo") {
+            ref = autorAPA + " (" + ano + "). " + titulo + ". <em>" + getVal("refPeriodico") + "</em>, " + (getVal("refVolume") || "") + ", " + (getVal("refPaginas") || "") + ".";
+        } else if (tipo === "site") {
+            ref = autorAPA + " (" + ano + "). <em>" + titulo + "</em>. " + getVal("refUrl");
+        } else if (tipo === "tcc") {
+            ref = autorAPA + " (" + ano + "). <em>" + titulo + "</em> [" + (getVal("refTipoTcc") || "Trabalho") + "]. " + (getVal("refInstituicao") || "") + ".";
+        }
+    }
+
+    var container = document.getElementById("refResultado");
+    container.innerHTML = '<p style="margin-bottom:8px;font-size:0.72rem;color:#64748b;">' + formato.toUpperCase() + '</p><p>' + ref + '</p>' +
+        '<div style="display:flex;gap:6px;margin-top:10px;"><button class="btn-small" onclick="copiarRef()">Copiar</button><button class="btn-small" onclick="salvarRef()">Salvar</button></div>';
+    container._texto = ref.replace(/<[^>]+>/g, "");
+}
+
+function copiarRef() {
+    var texto = document.getElementById("refResultado")._texto;
+    if (texto) navigator.clipboard.writeText(texto).then(function () { toast("Referencia copiada!"); });
+}
+
+function salvarRef() {
+    var texto = document.getElementById("refResultado")._texto;
+    if (!texto) return;
+    var refs = JSON.parse(localStorage.getItem("hubias_refs") || "[]");
+    refs.unshift({ texto: texto, data: new Date().toLocaleString("pt-BR") });
+    localStorage.setItem("hubias_refs", JSON.stringify(refs));
+    renderRefsSalvas();
+    toast("Referencia salva!");
+}
+
+function renderRefsSalvas() {
+    var container = document.getElementById("refsSalvas");
+    var refs = JSON.parse(localStorage.getItem("hubias_refs") || "[]");
+    if (refs.length === 0) { container.innerHTML = '<p class="empty-msg" style="padding:15px;">Nenhuma referencia salva.</p>'; return; }
+    container.innerHTML = "";
+    refs.forEach(function (r, i) {
+        var div = document.createElement("div");
+        div.className = "ref-item";
+        div.innerHTML = '<p>' + esc(r.texto) + '</p><div class="ref-item-actions"><span class="ref-item-tipo">' + esc(r.data) + '</span><button class="btn-small" onclick="navigator.clipboard.writeText(JSON.parse(localStorage.getItem(\'hubias_refs\')||\'[]\')[' + i + '].texto);toast(\'Copiada!\')">Copiar</button><button class="btn-small danger" onclick="confirmar(\'Excluir referencia?\',function(){var r=JSON.parse(localStorage.getItem(\'hubias_refs\')||\'[]\');r.splice(' + i + ',1);localStorage.setItem(\'hubias_refs\',JSON.stringify(r));renderRefsSalvas();toast(\'Removida\')})">Excluir</button></div>';
+        container.appendChild(div);
+    });
+}
+
+// ===== CRONOMETRO DE LEITURA =====
+var leituraInterval = null, leituraSegundos = 0, leituraRodando = false, leituraPaginas = 0;
+
+function toggleLeitura() {
+    if (leituraRodando) { pausarLeitura(); } else { iniciarLeitura(); }
+}
+
+function iniciarLeitura() {
+    leituraRodando = true;
+    document.getElementById("btnLeitura").textContent = "Pausar";
+    leituraInterval = setInterval(function () {
+        leituraSegundos++;
+        atualizarDisplayLeitura();
+    }, 1000);
+}
+
+function pausarLeitura() {
+    clearInterval(leituraInterval);
+    leituraRodando = false;
+    document.getElementById("btnLeitura").textContent = "Continuar";
+}
+
+function resetLeitura() {
+    clearInterval(leituraInterval);
+    leituraRodando = false;
+    leituraSegundos = 0;
+    leituraPaginas = 0;
+    document.getElementById("btnLeitura").textContent = "Iniciar";
+    document.getElementById("leituraPaginas").textContent = "0";
+    atualizarDisplayLeitura();
+}
+
+function atualizarDisplayLeitura() {
+    var h = Math.floor(leituraSegundos / 3600);
+    var m = Math.floor((leituraSegundos % 3600) / 60);
+    var s = leituraSegundos % 60;
+    document.getElementById("leituraDisplay").textContent =
+        (h < 10 ? "0" : "") + h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+
+    var stats = document.getElementById("leituraStats");
+    if (leituraSegundos > 0 && leituraPaginas > 0) {
+        var minutos = leituraSegundos / 60;
+        var pagPorMin = (leituraPaginas / minutos).toFixed(1);
+        var minPorPag = (minutos / leituraPaginas).toFixed(1);
+        stats.innerHTML = '<span>' + pagPorMin + '</span> pag/min | <span>' + minPorPag + '</span> min/pag';
+    } else {
+        stats.innerHTML = "Inicie o timer e conte as paginas para ver estatisticas.";
+    }
+}
+
+function ajustarPaginas(delta) {
+    leituraPaginas = Math.max(0, leituraPaginas + delta);
+    document.getElementById("leituraPaginas").textContent = leituraPaginas;
+    atualizarDisplayLeitura();
+}
+
+function salvarSessaoLeitura() {
+    if (leituraSegundos === 0) { toast("Inicie o timer primeiro!"); return; }
+    var sessoes = JSON.parse(localStorage.getItem("hubias_leitura") || "[]");
+    sessoes.unshift({
+        tempo: leituraSegundos,
+        paginas: leituraPaginas,
+        data: new Date().toLocaleString("pt-BR")
+    });
+    if (sessoes.length > 50) sessoes = sessoes.slice(0, 50);
+    localStorage.setItem("hubias_leitura", JSON.stringify(sessoes));
+    renderLeituraHistorico();
+    toast("Sessao de leitura salva!");
+}
+
+function renderLeituraHistorico() {
+    var container = document.getElementById("leituraHistorico");
+    var sessoes = JSON.parse(localStorage.getItem("hubias_leitura") || "[]");
+    if (sessoes.length === 0) { container.innerHTML = '<p class="empty-msg" style="padding:15px;">Nenhuma sessao salva.</p>'; return; }
+    container.innerHTML = "";
+    sessoes.forEach(function (s) {
+        var m = Math.floor(s.tempo / 60);
+        var div = document.createElement("div");
+        div.className = "leitura-hist-item";
+        div.innerHTML = '<span>' + esc(s.data) + '</span><strong>' + m + 'min | ' + s.paginas + ' pag</strong>';
+        container.appendChild(div);
+    });
+}
+
+// ===== CHEAT SHEETS =====
+var cheatAtual = "git";
+var CHEAT_DATA = {
+    git: [
+        { cmd: "git init", desc: "Inicializa repositorio" },
+        { cmd: "git clone <url>", desc: "Clona repositorio remoto" },
+        { cmd: "git status", desc: "Mostra estado dos arquivos" },
+        { cmd: "git add .", desc: "Adiciona todos os arquivos ao staging" },
+        { cmd: "git commit -m ''", desc: "Cria commit com mensagem" },
+        { cmd: "git push", desc: "Envia commits para o remoto" },
+        { cmd: "git pull", desc: "Baixa e mescla alteracoes do remoto" },
+        { cmd: "git branch", desc: "Lista branches" },
+        { cmd: "git branch <nome>", desc: "Cria nova branch" },
+        { cmd: "git checkout <branch>", desc: "Troca de branch" },
+        { cmd: "git checkout -b <nome>", desc: "Cria e troca para nova branch" },
+        { cmd: "git merge <branch>", desc: "Mescla branch na atual" },
+        { cmd: "git log --oneline", desc: "Historico resumido de commits" },
+        { cmd: "git stash", desc: "Salva alteracoes temporariamente" },
+        { cmd: "git stash pop", desc: "Restaura alteracoes do stash" },
+        { cmd: "git diff", desc: "Mostra diferencas nao-staged" },
+        { cmd: "git reset HEAD~1", desc: "Desfaz ultimo commit (mantem arquivos)" },
+        { cmd: "git rebase <branch>", desc: "Reaplica commits sobre outra branch" },
+        { cmd: "git cherry-pick <hash>", desc: "Aplica commit especifico na branch atual" },
+        { cmd: "git remote -v", desc: "Lista repositorios remotos" }
+    ],
+    http: [
+        { cmd: "200 OK", desc: "Requisicao bem-sucedida" },
+        { cmd: "201 Created", desc: "Recurso criado com sucesso" },
+        { cmd: "204 No Content", desc: "Sucesso sem corpo na resposta" },
+        { cmd: "301 Moved", desc: "Redirecionamento permanente" },
+        { cmd: "302 Found", desc: "Redirecionamento temporario" },
+        { cmd: "304 Not Modified", desc: "Recurso nao foi modificado (cache)" },
+        { cmd: "400 Bad Request", desc: "Requisicao mal formada" },
+        { cmd: "401 Unauthorized", desc: "Autenticacao necessaria" },
+        { cmd: "403 Forbidden", desc: "Acesso negado" },
+        { cmd: "404 Not Found", desc: "Recurso nao encontrado" },
+        { cmd: "405 Method Not Allowed", desc: "Metodo HTTP nao permitido" },
+        { cmd: "409 Conflict", desc: "Conflito com estado do recurso" },
+        { cmd: "422 Unprocessable", desc: "Entidade nao processavel" },
+        { cmd: "429 Too Many", desc: "Rate limit excedido" },
+        { cmd: "500 Internal Error", desc: "Erro interno do servidor" },
+        { cmd: "502 Bad Gateway", desc: "Resposta invalida do upstream" },
+        { cmd: "503 Unavailable", desc: "Servico indisponivel" },
+        { cmd: "GET", desc: "Buscar recurso" },
+        { cmd: "POST", desc: "Criar recurso" },
+        { cmd: "PUT", desc: "Atualizar recurso completo" },
+        { cmd: "PATCH", desc: "Atualizar recurso parcial" },
+        { cmd: "DELETE", desc: "Remover recurso" }
+    ],
+    regex: [
+        { cmd: ".", desc: "Qualquer caractere (exceto \\n)" },
+        { cmd: "\\d", desc: "Digito [0-9]" },
+        { cmd: "\\w", desc: "Alfanumerico [a-zA-Z0-9_]" },
+        { cmd: "\\s", desc: "Espaco em branco" },
+        { cmd: "^", desc: "Inicio da string" },
+        { cmd: "$", desc: "Fim da string" },
+        { cmd: "*", desc: "Zero ou mais repeticoes" },
+        { cmd: "+", desc: "Uma ou mais repeticoes" },
+        { cmd: "?", desc: "Zero ou uma ocorrencia" },
+        { cmd: "{n,m}", desc: "De n a m repeticoes" },
+        { cmd: "[abc]", desc: "Qualquer um: a, b ou c" },
+        { cmd: "[^abc]", desc: "Nenhum: a, b ou c" },
+        { cmd: "(grupo)", desc: "Grupo de captura" },
+        { cmd: "a|b", desc: "a OU b" },
+        { cmd: "(?=x)", desc: "Lookahead positivo" },
+        { cmd: "(?!x)", desc: "Lookahead negativo" },
+        { cmd: "\\b", desc: "Limite de palavra" },
+        { cmd: "/email/", desc: "[\\w.]+@[\\w]+\\.[a-z]{2,}" },
+        { cmd: "/telefone/", desc: "\\(?\\d{2}\\)?\\s?\\d{4,5}-?\\d{4}" },
+        { cmd: "/CPF/", desc: "\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}" }
+    ],
+    js: [
+        { cmd: "map()", desc: "Transforma cada elemento do array" },
+        { cmd: "filter()", desc: "Filtra elementos por condicao" },
+        { cmd: "reduce()", desc: "Reduz array a um valor" },
+        { cmd: "find()", desc: "Retorna primeiro que satisfaz condicao" },
+        { cmd: "forEach()", desc: "Itera sem retorno" },
+        { cmd: "some()", desc: "Verifica se algum satisfaz" },
+        { cmd: "every()", desc: "Verifica se todos satisfazem" },
+        { cmd: "includes()", desc: "Verifica se contem valor" },
+        { cmd: "spread ...", desc: "Espalha array/objeto" },
+        { cmd: "destructuring", desc: "const {a, b} = obj" },
+        { cmd: "template literal", desc: "`Ola ${nome}`" },
+        { cmd: "arrow =>", desc: "(x) => x * 2" },
+        { cmd: "async/await", desc: "const r = await fetch(url)" },
+        { cmd: "Promise", desc: "new Promise((resolve, reject) => {})" },
+        { cmd: "try/catch", desc: "Tratamento de erros" },
+        { cmd: "localStorage", desc: "setItem(), getItem(), removeItem()" },
+        { cmd: "JSON.parse()", desc: "String -> Objeto" },
+        { cmd: "JSON.stringify()", desc: "Objeto -> String" },
+        { cmd: "fetch()", desc: "Requisicoes HTTP" },
+        { cmd: "querySelector()", desc: "Seleciona elemento do DOM" }
+    ],
+    python: [
+        { cmd: "list comprehension", desc: "[x for x in range(10)]" },
+        { cmd: "dict comprehension", desc: "{k:v for k,v in items}" },
+        { cmd: "f-string", desc: 'f"Ola {nome}"' },
+        { cmd: "lambda", desc: "lambda x: x * 2" },
+        { cmd: "map()", desc: "map(func, iteravel)" },
+        { cmd: "filter()", desc: "filter(func, iteravel)" },
+        { cmd: "enumerate()", desc: "for i, val in enumerate(lista)" },
+        { cmd: "zip()", desc: "Combina iteraveis" },
+        { cmd: "try/except", desc: "Tratamento de excecoes" },
+        { cmd: "with open()", desc: "Leitura segura de arquivos" },
+        { cmd: "def / return", desc: "Definir funcao" },
+        { cmd: "class", desc: "Definir classe (OOP)" },
+        { cmd: "__init__", desc: "Construtor da classe" },
+        { cmd: "pip install", desc: "Instalar pacote" },
+        { cmd: "venv", desc: "python -m venv env" },
+        { cmd: "split()", desc: "'a,b,c'.split(',')" },
+        { cmd: "join()", desc: "','.join(['a','b'])" },
+        { cmd: "sorted()", desc: "Ordena iteravel" },
+        { cmd: "isinstance()", desc: "Verifica tipo do objeto" },
+        { cmd: "@decorator", desc: "Decorador de funcao" }
+    ],
+    sql: [
+        { cmd: "SELECT", desc: "SELECT col FROM tabela" },
+        { cmd: "WHERE", desc: "Filtrar resultados" },
+        { cmd: "JOIN", desc: "Combinar tabelas" },
+        { cmd: "LEFT JOIN", desc: "Todos da esquerda + match da direita" },
+        { cmd: "GROUP BY", desc: "Agrupar resultados" },
+        { cmd: "HAVING", desc: "Filtrar grupos" },
+        { cmd: "ORDER BY", desc: "Ordenar resultados" },
+        { cmd: "LIMIT", desc: "Limitar numero de resultados" },
+        { cmd: "INSERT INTO", desc: "Inserir registro" },
+        { cmd: "UPDATE SET", desc: "Atualizar registro" },
+        { cmd: "DELETE FROM", desc: "Remover registro" },
+        { cmd: "CREATE TABLE", desc: "Criar tabela" },
+        { cmd: "ALTER TABLE", desc: "Modificar estrutura" },
+        { cmd: "COUNT()", desc: "Contar registros" },
+        { cmd: "SUM()", desc: "Somar valores" },
+        { cmd: "AVG()", desc: "Media dos valores" },
+        { cmd: "DISTINCT", desc: "Valores unicos" },
+        { cmd: "LIKE '%x%'", desc: "Busca parcial" },
+        { cmd: "IN (a,b,c)", desc: "Valor esta na lista" },
+        { cmd: "BETWEEN", desc: "Valor entre dois limites" }
+    ],
+    ascii: [
+        { cmd: "32", desc: "(espaco)" }, { cmd: "48-57", desc: "0-9 (digitos)" },
+        { cmd: "65-90", desc: "A-Z (maiusculas)" }, { cmd: "97-122", desc: "a-z (minusculas)" },
+        { cmd: "33 !", desc: "Exclamacao" }, { cmd: "34 \"", desc: "Aspas duplas" },
+        { cmd: "35 #", desc: "Hash/Cerquilha" }, { cmd: "36 $", desc: "Cifrao" },
+        { cmd: "37 %", desc: "Porcentagem" }, { cmd: "38 &", desc: "E-comercial" },
+        { cmd: "40 (", desc: "Abre parentese" }, { cmd: "41 )", desc: "Fecha parentese" },
+        { cmd: "42 *", desc: "Asterisco" }, { cmd: "43 +", desc: "Mais" },
+        { cmd: "45 -", desc: "Hifen" }, { cmd: "46 .", desc: "Ponto" },
+        { cmd: "47 /", desc: "Barra" }, { cmd: "58 :", desc: "Dois pontos" },
+        { cmd: "59 ;", desc: "Ponto e virgula" }, { cmd: "61 =", desc: "Igual" },
+        { cmd: "63 ?", desc: "Interrogacao" }, { cmd: "64 @", desc: "Arroba" },
+        { cmd: "91 [", desc: "Abre colchete" }, { cmd: "92 \\", desc: "Barra invertida" },
+        { cmd: "93 ]", desc: "Fecha colchete" }, { cmd: "123 {", desc: "Abre chave" },
+        { cmd: "125 }", desc: "Fecha chave" }, { cmd: "126 ~", desc: "Til" },
+        { cmd: "0 NUL", desc: "Nulo" }, { cmd: "9 TAB", desc: "Tabulacao" },
+        { cmd: "10 LF", desc: "Line Feed (\\n)" }, { cmd: "13 CR", desc: "Carriage Return (\\r)" }
+    ]
+};
+
+function setCheatTab(tab, btn) {
+    cheatAtual = tab;
+    document.querySelectorAll(".cheat-tab").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    document.getElementById("cheatBusca").value = "";
+    renderCheat();
+}
+
+function renderCheat() {
+    var container = document.getElementById("cheatContainer");
+    var dados = CHEAT_DATA[cheatAtual] || [];
+    var busca = (document.getElementById("cheatBusca").value || "").toLowerCase();
+
+    var filtrados = dados.filter(function (d) {
+        return !busca || d.cmd.toLowerCase().indexOf(busca) !== -1 || d.desc.toLowerCase().indexOf(busca) !== -1;
+    });
+
+    container.innerHTML = "";
+    filtrados.forEach(function (d) {
+        var div = document.createElement("div");
+        div.className = "cheat-item";
+        div.innerHTML = '<span class="cheat-cmd">' + esc(d.cmd) + '</span><span class="cheat-desc">' + esc(d.desc) + '</span>';
+        container.appendChild(div);
+    });
+    if (filtrados.length === 0) container.innerHTML = '<p class="empty-msg" style="grid-column:1/-1;">Nenhum resultado.</p>';
 }
 
 // ===== EDITOR DE CODIGO =====

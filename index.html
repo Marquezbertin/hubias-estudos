@@ -45,6 +45,10 @@
             <span class="nav-sep"></span>
             <button class="nav-btn" onclick="mostrarSecao('stats', event)">Stats</button>
             <button class="nav-btn" onclick="mostrarSecao('editor', event)">Editor</button>
+            <button class="nav-btn" onclick="mostrarSecao('calc', event)">Calc</button>
+            <button class="nav-btn" onclick="mostrarSecao('refs', event)">ABNT</button>
+            <button class="nav-btn" onclick="mostrarSecao('leitura', event)">Leitura</button>
+            <button class="nav-btn" onclick="mostrarSecao('cheat', event)">Cheat</button>
             <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
             <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
         </nav>
@@ -377,6 +381,118 @@
             </div>
         </div>
         <p style="text-align:center;color:#64748b;font-size:0.75rem;margin-top:10px;">Python requer internet para carregar o interpretador. HTML e JS funcionam offline.</p>
+    </section>
+
+    <!-- SECAO: CALCULADORA -->
+    <section id="secao-calc" class="secao">
+        <h2 class="secao-titulo">Calculadora Cientifica</h2>
+        <div class="calc-container">
+            <div class="calc-main">
+                <input type="text" id="calcInput" class="calc-display" placeholder="Ex: sqrt(144) + 2^3" onkeydown="if(event.key==='Enter')calcular()">
+                <button class="btn-primary" onclick="calcular()">Calcular</button>
+                <div id="calcResultado" class="calc-resultado"></div>
+                <div id="calcHistorico" class="calc-historico"></div>
+            </div>
+            <div class="calc-sidebar">
+                <div class="calc-section">
+                    <h3>Conversor de Base</h3>
+                    <input type="text" id="calcBaseInput" placeholder="Numero (ex: 255, 0xFF, 0b1010)" onkeydown="if(event.key==='Enter')converterBase()">
+                    <button class="btn-secondary" onclick="converterBase()" style="margin-top:8px;">Converter</button>
+                    <div id="calcBaseResult" class="calc-base-result"></div>
+                </div>
+                <div class="calc-section">
+                    <h3>Referencia Rapida</h3>
+                    <div class="calc-ref">
+                        <code>sqrt(x)</code> <code>abs(x)</code> <code>pow(x,y)</code>
+                        <code>log(x)</code> <code>log2(x)</code> <code>log10(x)</code>
+                        <code>sin(x)</code> <code>cos(x)</code> <code>tan(x)</code>
+                        <code>PI</code> <code>E</code> <code>ceil(x)</code>
+                        <code>floor(x)</code> <code>round(x)</code> <code>random()</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: REFERENCIAS ABNT/APA -->
+    <section id="secao-refs" class="secao">
+        <h2 class="secao-titulo">Gerador de Referencias</h2>
+        <div class="refs-container">
+            <div class="refs-form">
+                <label style="margin-top:0;">Tipo de fonte</label>
+                <select id="refTipo" onchange="atualizarFormRef()">
+                    <option value="livro">Livro</option>
+                    <option value="artigo">Artigo de Periodico</option>
+                    <option value="site">Site / Pagina Web</option>
+                    <option value="tcc">TCC / Dissertacao / Tese</option>
+                </select>
+                <label>Autor(es) <small style="color:#64748b;">(Sobrenome, Nome)</small></label>
+                <input type="text" id="refAutor" placeholder="Ex: SILVA, Joao; SANTOS, Maria">
+                <label>Titulo</label>
+                <input type="text" id="refTitulo" placeholder="Titulo da obra">
+                <div id="refCamposExtra"></div>
+                <label>Ano</label>
+                <input type="text" id="refAno" placeholder="2024">
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn-primary" onclick="gerarReferencia('abnt')" style="flex:1;">Gerar ABNT</button>
+                    <button class="btn-primary" onclick="gerarReferencia('apa')" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);">Gerar APA</button>
+                </div>
+            </div>
+            <div class="refs-output">
+                <h3>Referencia Gerada</h3>
+                <div id="refResultado" class="ref-resultado">
+                    <p class="empty-msg" style="padding:20px;">Preencha os campos e clique em Gerar.</p>
+                </div>
+                <h3 style="margin-top:20px;">Referencias Salvas</h3>
+                <div id="refsSalvas"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: CRONOMETRO DE LEITURA -->
+    <section id="secao-leitura" class="secao">
+        <h2 class="secao-titulo">Cronometro de Leitura</h2>
+        <div class="leitura-container">
+            <div class="leitura-timer">
+                <div class="leitura-display" id="leituraDisplay">00:00:00</div>
+                <div class="leitura-controls">
+                    <button class="btn-primary" id="btnLeitura" onclick="toggleLeitura()" style="width:auto;margin-top:0;padding:10px 30px;">Iniciar</button>
+                    <button class="btn-secondary" onclick="resetLeitura()">Resetar</button>
+                </div>
+                <div class="leitura-paginas">
+                    <label style="margin:0;">Paginas lidas:</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-secondary" onclick="ajustarPaginas(-1)" style="padding:6px 12px;">-</button>
+                        <span id="leituraPaginas" style="font-size:1.5rem;font-weight:700;color:#6366f1;min-width:40px;text-align:center;">0</span>
+                        <button class="btn-secondary" onclick="ajustarPaginas(1)" style="padding:6px 12px;">+</button>
+                    </div>
+                </div>
+                <div id="leituraStats" class="leitura-stats"></div>
+            </div>
+            <div class="leitura-historico">
+                <h3>Sessoes de Leitura</h3>
+                <button class="btn-secondary" onclick="salvarSessaoLeitura()" style="margin-bottom:12px;">Salvar Sessao Atual</button>
+                <div id="leituraHistorico"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: CHEAT SHEETS -->
+    <section id="secao-cheat" class="secao">
+        <h2 class="secao-titulo">Cheat Sheets</h2>
+        <div class="cheat-tabs">
+            <button class="cheat-tab active" onclick="setCheatTab('git', this)">Git</button>
+            <button class="cheat-tab" onclick="setCheatTab('http', this)">HTTP</button>
+            <button class="cheat-tab" onclick="setCheatTab('regex', this)">Regex</button>
+            <button class="cheat-tab" onclick="setCheatTab('js', this)">JS</button>
+            <button class="cheat-tab" onclick="setCheatTab('python', this)">Python</button>
+            <button class="cheat-tab" onclick="setCheatTab('sql', this)">SQL</button>
+            <button class="cheat-tab" onclick="setCheatTab('ascii', this)">ASCII</button>
+        </div>
+        <div class="cheat-search">
+            <input type="text" id="cheatBusca" placeholder="Filtrar comandos..." oninput="renderCheat()">
+        </div>
+        <div id="cheatContainer" class="cheat-content"></div>
     </section>
 
     <!-- SECAO: DICAS -->

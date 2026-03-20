@@ -973,6 +973,122 @@ label:first-child { margin-top: 0; }
 .pomodoro-hist-item span:first-child { color: #cbd5e1; }
 .pomodoro-hist-item span:last-child { color: #64748b; }
 
+/* ===== CALCULADORA ===== */
+.calc-container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .calc-container { grid-template-columns: 1fr; } }
+
+.calc-main, .calc-sidebar {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+}
+
+.calc-display {
+    font-family: 'Cascadia Code', 'Consolas', monospace !important;
+    font-size: 1.2rem !important;
+    padding: 14px !important;
+    text-align: right;
+}
+
+.calc-resultado {
+    margin-top: 12px; padding: 14px; background: #0f172a; border-radius: 8px;
+    font-family: 'Cascadia Code', monospace; font-size: 1.3rem; color: #10b981;
+    text-align: right; min-height: 50px; display: flex; align-items: center; justify-content: flex-end;
+}
+
+.calc-historico { margin-top: 12px; max-height: 200px; overflow-y: auto; }
+.calc-historico-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; font-size: 0.8rem; font-family: monospace; }
+.calc-historico-item span:first-child { color: #94a3b8; } .calc-historico-item span:last-child { color: #10b981; }
+
+.calc-section { margin-bottom: 20px; }
+.calc-section h3 { color: #f1f5f9; font-size: 0.95rem; margin-bottom: 10px; }
+
+.calc-ref { display: flex; flex-wrap: wrap; gap: 6px; }
+.calc-ref code { background: #0f172a; color: #60a5fa; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: background 0.2s; }
+.calc-ref code:hover { background: #334155; }
+
+.calc-base-result { margin-top: 10px; }
+.calc-base-item { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.82rem; font-family: monospace; border-bottom: 1px solid #334155; }
+.calc-base-item span:first-child { color: #94a3b8; } .calc-base-item span:last-child { color: #f1f5f9; word-break: break-all; }
+
+/* ===== REFERENCIAS ===== */
+.refs-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .refs-container { grid-template-columns: 1fr; } }
+
+.refs-form, .refs-output {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+}
+
+.refs-output h3 { color: #f1f5f9; font-size: 0.95rem; margin-bottom: 10px; }
+
+.ref-resultado {
+    background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 16px;
+    font-size: 0.88rem; color: #cbd5e1; line-height: 1.6; word-break: break-word;
+}
+
+.ref-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+.ref-item p { font-size: 0.82rem; color: #cbd5e1; line-height: 1.5; }
+.ref-item-actions { display: flex; gap: 6px; margin-top: 8px; }
+.ref-item-tipo { font-size: 0.68rem; color: #94a3b8; background: #334155; padding: 1px 6px; border-radius: 4px; }
+
+/* ===== CRONOMETRO LEITURA ===== */
+.leitura-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 900px; margin: 0 auto; }
+@media (max-width: 768px) { .leitura-container { grid-template-columns: 1fr; } }
+
+.leitura-timer, .leitura-historico {
+    background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px;
+}
+
+.leitura-display {
+    font-size: 3.5rem; font-weight: 700; color: #f1f5f9; text-align: center;
+    font-family: 'Cascadia Code', monospace; font-variant-numeric: tabular-nums; margin-bottom: 20px;
+}
+
+.leitura-controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+
+.leitura-paginas { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+
+.leitura-stats { text-align: center; color: #94a3b8; font-size: 0.85rem; }
+.leitura-stats span { color: #6366f1; font-weight: 600; }
+
+.leitura-historico h3 { color: #f1f5f9; font-size: 0.95rem; margin-bottom: 10px; }
+
+.leitura-hist-item { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 0.82rem; }
+.leitura-hist-item span { color: #94a3b8; }
+.leitura-hist-item strong { color: #f1f5f9; }
+
+/* ===== CHEAT SHEETS ===== */
+.cheat-tabs { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+
+.cheat-tab {
+    background: #1e293b; color: #94a3b8; border: 1px solid #334155;
+    padding: 7px 16px; border-radius: 8px; cursor: pointer; font-size: 0.82rem; transition: all 0.3s;
+}
+
+.cheat-tab.active { background: #6366f1; color: white; border-color: #6366f1; }
+
+.cheat-search { margin-bottom: 15px; }
+
+.cheat-content {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px;
+}
+
+.cheat-item {
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px;
+    display: flex; gap: 12px; align-items: flex-start; transition: border-color 0.3s;
+}
+
+.cheat-item:hover { border-color: #6366f1; }
+
+.cheat-cmd {
+    background: #0f172a; color: #f59e0b; padding: 4px 10px; border-radius: 6px;
+    font-family: 'Cascadia Code', monospace; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0;
+}
+
+.cheat-desc { color: #cbd5e1; font-size: 0.82rem; line-height: 1.4; }
+
+@media (max-width: 600px) {
+    .cheat-content { grid-template-columns: 1fr; }
+}
+
 /* ===== EDITOR DE CODIGO ===== */
 .editor-toolbar {
     display: flex;

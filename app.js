@@ -17,7 +17,13 @@ var IAS = [
     { nome: "Phind", url: "https://www.phind.com", icon: "\uD83D\uDCBB", desc: "Especializada em programacao. Respostas com codigo e exemplos.", categoria: "codigo", tag: "Dev Search" },
     { nome: "You.com", url: "https://you.com", icon: "\uD83C\uDF10", desc: "Busca com IA. Combina resultados da web com respostas inteligentes.", categoria: "pesquisa", tag: "Busca IA" },
     { nome: "Quillbot", url: "https://quillbot.com", icon: "\uD83D\uDD8A\uFE0F", desc: "Parafrasear textos, corrigir gramatica, melhorar escrita.", categoria: "escrita", tag: "Reescrita" },
-    { nome: "Canva IA", url: "https://www.canva.com", icon: "\uD83D\uDDBC\uFE0F", desc: "Design com IA. Crie banners, posts e materiais visuais.", categoria: "visual", tag: "Design" }
+    { nome: "Canva IA", url: "https://www.canva.com", icon: "\uD83D\uDDBC\uFE0F", desc: "Design com IA. Crie banners, posts e materiais visuais.", categoria: "visual", tag: "Design" },
+    { nome: "Grok", url: "https://grok.com", icon: "\uD83E\uDD16", desc: "IA do X (Twitter). Respostas em tempo real com dados da web.", categoria: "pesquisa", tag: "Tempo Real" },
+    { nome: "Mistral Le Chat", url: "https://chat.mistral.ai", icon: "\uD83C\uDF0A", desc: "IA europeia open-source. Forte em multiplos idiomas e codigo.", categoria: "codigo", tag: "Open Source" },
+    { nome: "Google AI Studio", url: "https://aistudio.google.com", icon: "\uD83E\uDDEA", desc: "Teste modelos Gemini direto. Ideal para experimentar prompts.", categoria: "estudo", tag: "Laboratorio" },
+    { nome: "Napkin AI", url: "https://napkin.ai", icon: "\uD83D\uDCC8", desc: "Transforma texto em infograficos e diagramas visuais.", categoria: "visual", tag: "Infograficos" },
+    { nome: "Suno AI", url: "https://suno.com", icon: "\uD83C\uDFB5", desc: "Cria musicas e jingles com IA. Otimo para projetos criativos.", categoria: "visual", tag: "Audio & Musica" },
+    { nome: "SciSpace", url: "https://typeset.io", icon: "\uD83D\uDD2C", desc: "Encontra, entende e explica papers academicos. Perfeito para pos.", categoria: "pesquisa", tag: "Papers" }
 ];
 
 // ===== INICIALIZACAO =====
@@ -37,6 +43,8 @@ document.addEventListener("DOMContentLoaded", function () {
     atualizarDisplayPomodoro();
     renderPomodoroStats();
     autoBackupCheck();
+    registerSW();
+    renderMetaDiaria();
 });
 
 // ===== CONFIRM DIALOG =====
@@ -818,6 +826,35 @@ function editarFlashcard(id) {
     toast("Flashcard atualizado!");
 }
 
+function importarFlashcardsEmLote() {
+    var texto = document.getElementById("fcImportTexto").value.trim();
+    var deck = document.getElementById("fcDeck").value;
+    if (!texto) { toast("Cole as perguntas e respostas!"); return; }
+
+    var linhas = texto.split("\n").filter(function (l) { return l.trim(); });
+    var cards = getFlashcards();
+    var count = 0;
+
+    linhas.forEach(function (linha) {
+        var partes = linha.split(";");
+        if (partes.length >= 2) {
+            var pergunta = partes[0].trim();
+            var resposta = partes.slice(1).join(";").trim();
+            if (pergunta && resposta) {
+                cards.push({ id: Date.now() + count, pergunta: pergunta, resposta: resposta, deck: deck, nivel: 0, proximaRevisao: Date.now() });
+                count++;
+            }
+        }
+    });
+
+    if (count === 0) { toast("Nenhum card valido. Use o formato: pergunta;resposta"); return; }
+
+    localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+    document.getElementById("fcImportTexto").value = "";
+    renderFlashcards();
+    toast(count + " flashcard(s) importado(s)!");
+}
+
 function deletarFC(id) {
     var cards = getFlashcards().filter(function (c) { return c.id !== id; });
     localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
@@ -986,6 +1023,7 @@ function renderNotas() {
         var matchBusca = !busca || n.titulo.toLowerCase().indexOf(busca) !== -1 || n.conteudo.toLowerCase().indexOf(busca) !== -1;
         return matchBusca && (!filtroMateria || n.materia === filtroMateria);
     });
+    filtradas.sort(function (a, b) { return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0); });
     if (filtradas.length === 0) { container.innerHTML = '<p class="empty-msg">Nenhuma nota encontrada.</p>'; return; }
     container.innerHTML = "";
     filtradas.forEach(function (nota) {
@@ -1000,6 +1038,7 @@ function renderNotas() {
             '<div class="nota-card-actions">' +
             '<button class="btn-small" onclick="expandirNota(' + nota.id + ')">Expandir</button>' +
             '<button class="btn-small" onclick="copiarNota(' + nota.id + ')">Copiar</button>' +
+            '<button class="btn-small" onclick="togglePinNota(' + nota.id + ')">' + (nota.pinned ? 'Desafixar' : 'Fixar') + '</button>' +
             '<button class="btn-small" onclick="editarNota(' + nota.id + ')">Editar</button>' +
             '<button class="btn-small danger" onclick="confirmar(\'Excluir esta nota?\', function(){deletarNota(' + nota.id + ')})">Excluir</button></div></div>';
         container.appendChild(div);
@@ -1149,6 +1188,52 @@ function playSound() {
     } catch (e) { /* browser sem suporte */ }
 }
 
+// ===== META DIARIA =====
+function getMetaDiaria() { return parseInt(localStorage.getItem("hubias_meta_diaria") || "0"); }
+
+function salvarMetaDiaria() {
+    var input = document.getElementById("metaDiariaInput");
+    var valor = parseInt(input.value) || 0;
+    localStorage.setItem("hubias_meta_diaria", valor.toString());
+    renderMetaDiaria();
+    toast("Meta atualizada: " + valor + " min/dia");
+}
+
+function renderMetaDiaria() {
+    var meta = getMetaDiaria();
+    var container = document.getElementById("metaDiariaContainer");
+    if (!container) return;
+    if (meta <= 0) {
+        container.innerHTML = '<p style="color:#64748b;font-size:0.85rem;">Defina uma meta diaria de estudo no campo acima.</p>';
+        return;
+    }
+    var hoje = new Date().toISOString().split("T")[0];
+    var pomDados = JSON.parse(localStorage.getItem("hubias_pomodoro") || "{}");
+    var minHoje = (pomDados[hoje] && pomDados[hoje].minutos) || 0;
+    var pct = Math.min(Math.round((minHoje / meta) * 100), 100);
+    var cor = pct >= 100 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#6366f1";
+
+    container.innerHTML =
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:0.85rem;">' +
+        '<span style="color:#cbd5e1;">' + minHoje + ' / ' + meta + ' min</span>' +
+        '<span style="color:' + cor + ';font-weight:700;">' + pct + '%</span></div>' +
+        '<div style="background:#0f172a;border-radius:8px;height:14px;overflow:hidden;">' +
+        '<div style="height:100%;border-radius:8px;background:' + cor + ';width:' + pct + '%;transition:width 0.5s;"></div></div>' +
+        (pct >= 100 ? '<p style="color:#10b981;font-size:0.85rem;margin-top:8px;text-align:center;font-weight:600;">Meta atingida! Parabens!</p>' : '');
+}
+
+// ===== NOTAS FIXADAS =====
+function togglePinNota(id) {
+    var notas = getNotas();
+    var nota = notas.find(function (n) { return n.id === id; });
+    if (nota) {
+        nota.pinned = !nota.pinned;
+        localStorage.setItem("hubias_notas", JSON.stringify(notas));
+        renderNotas();
+        toast(nota.pinned ? "Nota fixada no topo!" : "Nota desafixada");
+    }
+}
+
 // ===== KEYBOARD SHORTCUTS =====
 document.addEventListener("keydown", function (e) {
     // Ctrl+K: focus na busca global
@@ -1173,4 +1258,13 @@ function toast(msg) {
     el.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2500);
+}
+
+// ===== SERVICE WORKER =====
+function registerSW() {
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").then(function () {
+            console.log("SW registered");
+        }).catch(function () {});
+    }
 }

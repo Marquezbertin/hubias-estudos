@@ -1,10 +1,19 @@
 {
     "name": "Hub PRO de IAs - Estudos",
     "short_name": "Hub IAs",
-    "description": "Seu centro de estudos com inteligencia artificial",
-    "start_url": "index.html",
+    "description": "Centro de estudos com inteligencia artificial para pos-graduacao",
+    "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#0f172a",
     "theme_color": "#0f172a",
-    "icons": []
+    "orientation": "any",
+    "categories": ["education", "productivity"],
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f172a'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%236366f1'>IA</text></svg>",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
 }

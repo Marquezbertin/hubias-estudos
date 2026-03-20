@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
@@ -137,6 +139,11 @@
                 </div>
             </div>
         </div>
+        <div class="fc-form" style="margin-bottom:15px;">
+            <label style="margin-top:0;color:#a78bfa;font-weight:600;">Importar em Lote</label>
+            <textarea id="fcImportTexto" placeholder="Cole aqui no formato: pergunta;resposta (uma por linha)&#10;Ex:&#10;O que e HTML?;Linguagem de marcacao para web&#10;O que e CSS?;Linguagem de estilos" rows="4" style="min-height:80px;"></textarea>
+            <button class="btn-secondary" onclick="importarFlashcardsEmLote()">Importar Cards</button>
+        </div>
         <div class="fc-modo">
             <button class="fc-modo-btn active" onclick="setModoFC('estudo', this)">Modo Estudo</button>
             <button class="fc-modo-btn" onclick="setModoFC('lista', this)">Ver Todos</button>
@@ -200,6 +207,13 @@
                 </div>
             </div>
             <div class="pomodoro-stats">
+                <h3>Meta Diaria</h3>
+                <div style="display:flex;gap:8px;margin-bottom:15px;">
+                    <input type="number" id="metaDiariaInput" placeholder="Min/dia" min="0" max="600" style="width:100px;">
+                    <button class="btn-secondary" onclick="salvarMetaDiaria()">Definir</button>
+                </div>
+                <div id="metaDiariaContainer"></div>
+                <hr style="border:none;border-top:1px solid #334155;margin:15px 0;">
                 <h3>Sessoes de Hoje</h3>
                 <div class="pomodoro-stats-grid">
                     <div class="pomodoro-stat-card">

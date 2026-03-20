@@ -60,6 +60,7 @@
             <button class="nav-btn" onclick="mostrarSecao('cheat', event)">Cheat</button>
             <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
             <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
+            <button class="nav-btn" onclick="mostrarSecao('sync', event)">Sync</button>
         </nav>
     </header>
 
@@ -657,6 +658,99 @@
         </div>
     </section>
 
+    <!-- SECAO: SYNC NA NUVEM -->
+    <section id="secao-sync" class="secao">
+        <h2 class="secao-titulo">Sincronizacao na Nuvem</h2>
+        <p style="text-align:center;color:#94a3b8;margin-bottom:20px;font-size:0.85rem;">Acesse seus dados de qualquer dispositivo usando Supabase (gratuito).</p>
+
+        <!-- Status -->
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;background:#1e293b;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">
+            <div id="syncStatusDot" style="width:10px;height:10px;border-radius:50%;background:#64748b;flex-shrink:0;"></div>
+            <span id="syncStatusText">Nao configurado</span>
+        </div>
+
+        <!-- Passo 1: Configurar Supabase -->
+        <div class="backup-card" id="syncConfigCard">
+            <h3>1. Configurar Supabase</h3>
+            <details style="background:#0f172a;border-radius:8px;padding:12px;margin-top:10px;">
+                <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como configurar (passo a passo)</summary>
+                <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
+                    <li>Acesse <strong>supabase.com</strong> e crie uma conta gratuita</li>
+                    <li>Crie um <strong>New Project</strong> (escolha uma senha e regiao)</li>
+                    <li>Aguarde o projeto ser criado (1-2 min)</li>
+                    <li>Va em <strong>SQL Editor</strong> (menu lateral) e cole o SQL abaixo, depois clique <strong>Run</strong></li>
+                    <li>Va em <strong>Project Settings &gt; API</strong> (menu lateral)</li>
+                    <li>Copie o <strong>Project URL</strong> e a <strong>anon public key</strong></li>
+                    <li>Cole nos campos abaixo e salve</li>
+                    <li><strong>Importante:</strong> Em <strong>Authentication &gt; Providers &gt; Email</strong>, desmarque "Confirm email" para login imediato</li>
+                </ol>
+                <div style="background:#020617;border-radius:8px;padding:12px;margin-top:12px;">
+                    <p style="font-size:0.78rem;color:#94a3b8;margin:0 0 8px;">SQL para criar a tabela (copie e cole no SQL Editor):</p>
+                    <pre id="syncSQL" style="font-size:0.72rem;color:#e2e8f0;white-space:pre-wrap;margin:0;line-height:1.5;">CREATE TABLE hubias_sync (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  value TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, key)
+);
+
+ALTER TABLE hubias_sync ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own data" ON hubias_sync
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);</pre>
+                    <button class="btn-small" onclick="navigator.clipboard.writeText(document.getElementById('syncSQL').textContent);toast('SQL copiado!')" style="margin-top:8px;">Copiar SQL</button>
+                </div>
+            </details>
+            <div style="margin-top:15px;">
+                <label>URL do Supabase</label>
+                <input type="text" id="syncUrl" placeholder="https://xxxxx.supabase.co">
+                <label>Chave Anon (anon public key)</label>
+                <input type="text" id="syncKey" placeholder="eyJhbGciOi...">
+                <button class="btn-primary" onclick="configurarSync()" style="margin-top:10px;">Salvar Configuracao</button>
+            </div>
+        </div>
+
+        <!-- Passo 2: Login/Cadastro -->
+        <div class="backup-card" id="syncAuthCard" style="display:none;">
+            <h3>2. Conta</h3>
+            <div id="syncAuthForm">
+                <label>Email</label>
+                <input type="email" id="syncEmail" placeholder="seu@email.com">
+                <label>Senha</label>
+                <input type="password" id="syncPassword" placeholder="Minimo 6 caracteres">
+                <div style="display:flex;gap:10px;margin-top:12px;">
+                    <button class="btn-primary" onclick="loginSync()" style="flex:1;">Entrar</button>
+                    <button class="btn-secondary" onclick="signupSync()" style="flex:1;">Criar Conta</button>
+                </div>
+            </div>
+            <div id="syncLoggedIn" style="display:none;">
+                <p style="color:#10b981;margin-bottom:10px;">Conectado como: <strong id="syncUserEmail">...</strong></p>
+                <button class="btn-secondary" onclick="logoutSync()">Sair</button>
+            </div>
+        </div>
+
+        <!-- Passo 3: Controles de Sync -->
+        <div class="backup-card" id="syncControlsCard" style="display:none;">
+            <h3>3. Sincronizar</h3>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-primary" onclick="syncPush()" style="flex:1;">Enviar para Nuvem</button>
+                <button class="btn-primary" onclick="syncPull()" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);">Baixar da Nuvem</button>
+            </div>
+            <div style="margin-top:15px;display:flex;align-items:center;gap:10px;">
+                <label style="margin:0;white-space:nowrap;">Auto-sync:</label>
+                <button class="btn-secondary" id="btnAutoSync" onclick="toggleAutoSync()">Ativar (5min)</button>
+            </div>
+            <p style="margin-top:10px;font-size:0.75rem;color:#64748b;" id="syncLastInfo">Nenhuma sincronizacao realizada.</p>
+        </div>
+
+        <!-- Reset -->
+        <div id="syncResetArea" style="margin-top:15px;text-align:center;display:none;">
+            <button class="btn-small danger" onclick="confirmar('Desconectar e limpar configuracao de sync?', resetSync)">Resetar Configuracao</button>
+        </div>
+    </section>
+
     <!-- CONFIRM DIALOG -->
     <div id="confirmDialog" class="confirm-overlay" style="display:none;">
         <div class="confirm-box">
@@ -677,6 +771,7 @@
     </footer>
 
     <script src="db.js"></script>
+    <script src="sync.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -61,6 +61,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     HubDB.init().then(function () {
         iniciarApp();
+        // Inicializar sync na nuvem (nao-bloqueante)
+        HubSync.init().then(function () {
+            renderSyncUI();
+        }).catch(function () {
+            renderSyncUI();
+        });
     }).catch(function (err) {
         console.warn("HubDB falhou, usando localStorage como fallback:", err);
         iniciarApp();
@@ -114,6 +120,7 @@ function mostrarSecao(nome, e) {
     if (nome === "refs") { atualizarFormRef(); renderRefsSalvas(); }
     if (nome === "leitura") renderLeituraHistorico();
     if (nome === "cheat") renderCheat();
+    if (nome === "sync") renderSyncUI();
 }
 
 function mostrarSecaoDirect(nome) {
@@ -2458,6 +2465,182 @@ function toast(msg) {
     el.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2500);
+}
+
+// ===== SYNC NA NUVEM (Supabase) =====
+function configurarSync() {
+    var url = document.getElementById("syncUrl").value.trim();
+    var key = document.getElementById("syncKey").value.trim();
+    if (!url || !key) { toast("Preencha URL e chave!"); return; }
+    toast("Conectando ao Supabase...");
+    HubSync.configure(url, key).then(function (loggedIn) {
+        toast(loggedIn ? "Configurado e conectado!" : "Configurado! Faca login ou crie uma conta.");
+        renderSyncUI();
+    }).catch(function (err) {
+        toast("Erro: " + (err.message || "Falha na conexao"));
+    });
+}
+
+function loginSync() {
+    var email = document.getElementById("syncEmail").value.trim();
+    var password = document.getElementById("syncPassword").value;
+    if (!email || !password) { toast("Preencha email e senha!"); return; }
+    toast("Entrando...");
+    HubSync.login(email, password).then(function () {
+        toast("Login realizado com sucesso!");
+        renderSyncUI();
+    }).catch(function (err) {
+        toast("Erro: " + (err.message || "Credenciais invalidas"));
+    });
+}
+
+function signupSync() {
+    var email = document.getElementById("syncEmail").value.trim();
+    var password = document.getElementById("syncPassword").value;
+    if (!email || !password) { toast("Preencha email e senha!"); return; }
+    if (password.length < 6) { toast("Senha precisa ter pelo menos 6 caracteres!"); return; }
+    toast("Criando conta...");
+    HubSync.signup(email, password).then(function (data) {
+        if (data.session) {
+            toast("Conta criada e logado!");
+        } else {
+            toast("Conta criada! Verifique seu email para confirmar.");
+        }
+        renderSyncUI();
+    }).catch(function (err) {
+        toast("Erro: " + (err.message || "Falha ao criar conta"));
+    });
+}
+
+function logoutSync() {
+    HubSync.logout().then(function () {
+        toast("Desconectado");
+        renderSyncUI();
+    });
+}
+
+function syncPush() {
+    toast("Enviando dados para a nuvem...");
+    HubSync.pushToCloud().then(function (count) {
+        toast("Enviados " + count + " itens para a nuvem!");
+        renderSyncUI();
+    }).catch(function (err) {
+        toast("Erro ao enviar: " + (err.message || "Falha"));
+    });
+}
+
+function syncPull() {
+    confirmar("Baixar dados da nuvem? Os dados locais serao atualizados.", function () {
+        toast("Baixando dados da nuvem...");
+        HubSync.pullFromCloud().then(function (count) {
+            toast("Recebidos " + count + " itens da nuvem!");
+            // Re-render tudo
+            renderCards("todas"); carregarPrompts(); renderFavoritos(); renderHistorico();
+            atualizarSelectsMaterias(); renderNotas(); atualizarFiltroTags(); renderLinks();
+            atualizarSelectsDecks(); renderFlashcards(); renderPlanos(); renderPomodoroStats();
+            renderCadernoSidebar(); atualizarStorageInfo();
+            renderSyncUI();
+        }).catch(function (err) {
+            toast("Erro ao baixar: " + (err.message || "Falha"));
+        });
+    });
+}
+
+function toggleAutoSync() {
+    if (HubSync.isAutoSyncing()) {
+        HubSync.stopAutoSync();
+        toast("Auto-sync desativado");
+    } else {
+        HubSync.startAutoSync(5);
+        toast("Auto-sync ativado (a cada 5 minutos)");
+    }
+    renderSyncUI();
+}
+
+function resetSync() {
+    HubSync.clearConfig();
+    document.getElementById("syncUrl").value = "";
+    document.getElementById("syncKey").value = "";
+    document.getElementById("syncEmail").value = "";
+    document.getElementById("syncPassword").value = "";
+    renderSyncUI();
+    toast("Configuracao de sync removida");
+}
+
+function renderSyncUI() {
+    var configured = HubSync.isConfigured();
+    var loggedIn = HubSync.isLoggedIn();
+    var syncing = HubSync.isSyncing();
+
+    // Status dot
+    var dot = document.getElementById("syncStatusDot");
+    var text = document.getElementById("syncStatusText");
+    if (dot && text) {
+        if (!configured) {
+            dot.style.background = "#64748b";
+            text.textContent = "Nao configurado";
+        } else if (!loggedIn) {
+            dot.style.background = "#f59e0b";
+            text.textContent = "Configurado - faca login";
+        } else if (syncing) {
+            dot.style.background = "#f59e0b";
+            text.textContent = "Sincronizando...";
+        } else {
+            dot.style.background = "#10b981";
+            text.textContent = "Conectado e pronto";
+        }
+    }
+
+    // Config card - mostrar valores salvos
+    if (configured) {
+        var config = HubSync.getConfig();
+        if (config) {
+            document.getElementById("syncUrl").value = config.url || "";
+            document.getElementById("syncKey").value = config.key || "";
+        }
+    }
+
+    // Auth card
+    var authCard = document.getElementById("syncAuthCard");
+    if (authCard) authCard.style.display = configured ? "block" : "none";
+
+    var authForm = document.getElementById("syncAuthForm");
+    var loggedInDiv = document.getElementById("syncLoggedIn");
+    if (loggedIn) {
+        if (authForm) authForm.style.display = "none";
+        if (loggedInDiv) loggedInDiv.style.display = "block";
+        // Buscar email do usuario
+        HubSync.getUserEmail().then(function (email) {
+            var el = document.getElementById("syncUserEmail");
+            if (el && email) el.textContent = email;
+        });
+    } else {
+        if (authForm) authForm.style.display = "block";
+        if (loggedInDiv) loggedInDiv.style.display = "none";
+    }
+
+    // Controls card
+    var controls = document.getElementById("syncControlsCard");
+    if (controls) controls.style.display = loggedIn ? "block" : "none";
+
+    // Auto-sync button
+    var btnAuto = document.getElementById("btnAutoSync");
+    if (btnAuto) {
+        btnAuto.textContent = HubSync.isAutoSyncing() ? "Desativar Auto-Sync" : "Ativar (5min)";
+    }
+
+    // Last sync info
+    var lastInfo = document.getElementById("syncLastInfo");
+    if (lastInfo) {
+        var last = HubSync.lastSync();
+        lastInfo.textContent = last
+            ? "Ultima sync: " + new Date(last).toLocaleString("pt-BR")
+            : "Nenhuma sincronizacao realizada.";
+    }
+
+    // Reset area
+    var resetArea = document.getElementById("syncResetArea");
+    if (resetArea) resetArea.style.display = configured ? "block" : "none";
 }
 
 // ===== EXPORTAR/IMPORTAR SQLITE .DB =====

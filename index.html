@@ -38,6 +38,7 @@
             <button class="nav-btn" onclick="mostrarSecao('plano', event)">Plano</button>
             <button class="nav-btn" onclick="mostrarSecao('pomodoro', event)">Pomodoro</button>
             <span class="nav-sep"></span>
+            <button class="nav-btn" onclick="mostrarSecao('caderno', event)">Caderno</button>
             <button class="nav-btn" onclick="mostrarSecao('notas', event)">Notas</button>
             <button class="nav-btn" onclick="mostrarSecao('links', event)">Links</button>
             <button class="nav-btn" onclick="mostrarSecao('favoritos', event)">Favoritos</button>
@@ -235,6 +236,56 @@
                     </div>
                 </div>
                 <div class="pomodoro-historico" id="pomodoroHistorico"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: CADERNO -->
+    <section id="secao-caderno" class="secao">
+        <h2 class="secao-titulo">Caderno de Estudos</h2>
+        <div class="caderno-layout">
+            <!-- Sidebar: materias e paginas -->
+            <div class="caderno-sidebar">
+                <div class="caderno-nova-materia">
+                    <input type="text" id="cadernoNovaMateria" placeholder="Nova materia..." onkeydown="if(event.key==='Enter')adicionarCadernoMateria()">
+                    <button class="btn-secondary" onclick="adicionarCadernoMateria()">+</button>
+                </div>
+                <div id="cadernoMaterias" class="caderno-materias-list"></div>
+            </div>
+
+            <!-- Area principal: editor da pagina -->
+            <div class="caderno-editor">
+                <div id="cadernoVazio" class="caderno-vazio">
+                    <p>Selecione ou crie uma materia para comecar.</p>
+                    <p style="font-size:0.8rem;color:#64748b;margin-top:8px;">Cada materia e como um caderno fisico: voce cria paginas e vai construindo conteudo ao longo do semestre.</p>
+                </div>
+                <div id="cadernoAtivo" class="caderno-ativo" style="display:none;">
+                    <div class="caderno-page-header">
+                        <div class="caderno-page-nav">
+                            <select id="cadernoPaginaSelect" onchange="trocarPaginaCaderno()"></select>
+                            <button class="btn-secondary" onclick="novaPaginaCaderno()">+ Pagina</button>
+                            <button class="btn-small danger" onclick="confirmar('Excluir esta pagina?', excluirPaginaCaderno)">Excluir Pagina</button>
+                        </div>
+                        <input type="text" id="cadernoPaginaTitulo" placeholder="Titulo da pagina..." class="caderno-page-title" oninput="salvarCadernoAuto()">
+                    </div>
+                    <div class="caderno-toolbar">
+                        <button class="caderno-fmt" onclick="cadernoFmt('**','**')" title="Negrito"><strong>N</strong></button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('*','*')" title="Italico"><em>I</em></button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('`','`')" title="Codigo">Cod</button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('## ','')" title="Titulo">H2</button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('### ','')" title="Subtitulo">H3</button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('- ','')" title="Lista">Lista</button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('> ','')" title="Citacao">Citar</button>
+                        <button class="caderno-fmt" onclick="cadernoFmt('---\\n','')" title="Divisor">---</button>
+                        <span style="margin-left:auto;font-size:0.72rem;color:#64748b;" id="cadernoCharCount">0 caracteres</span>
+                    </div>
+                    <textarea id="cadernoConteudo" class="caderno-textarea" placeholder="Escreva aqui... Suporta Markdown:&#10;&#10;## Titulo&#10;**negrito** *italico* `codigo`&#10;- item de lista&#10;> citacao&#10;&#10;O conteudo salva automaticamente." oninput="salvarCadernoAuto()"></textarea>
+                    <div class="caderno-preview-toggle">
+                        <button class="btn-secondary" onclick="toggleCadernoPreview()">Visualizar Formatado</button>
+                        <span style="font-size:0.72rem;color:#64748b;">Salva automaticamente</span>
+                    </div>
+                    <div id="cadernoPreview" class="caderno-preview" style="display:none;"></div>
+                </div>
             </div>
         </div>
     </section>

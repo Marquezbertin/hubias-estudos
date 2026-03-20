@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
     registerSW();
     renderMetaDiaria();
     initEditor();
+    renderCadernoSidebar();
     atualizarFormRef();
     renderRefsSalvas();
     renderLeituraHistorico();
@@ -94,6 +95,7 @@ function mostrarSecao(nome, e) {
     if (nome === "links") { atualizarFiltroTags(); renderLinks(); }
     if (nome === "notas") { atualizarSelectsMaterias(); renderNotas(); }
     if (nome === "pomodoro") renderPomodoroStats();
+    if (nome === "caderno") renderCadernoSidebar();
     if (nome === "editor") { atualizarLinhas(); atualizarSnippetsSelect(); }
     if (nome === "refs") { atualizarFormRef(); renderRefsSalvas(); }
     if (nome === "leitura") renderLeituraHistorico();
@@ -444,7 +446,7 @@ var BACKUP_KEYS = [
     "hubias_favoritos", "hubias_historico", "hubias_prompts",
     "hubias_notas", "hubias_materias", "hubias_links",
     "hubias_flashcards", "hubias_decks", "hubias_planos",
-    "hubias_pomodoro", "hubias_snippets", "hubias_meta_diaria", "hubias_refs", "hubias_leitura",
+    "hubias_pomodoro", "hubias_cadernos", "hubias_snippets", "hubias_meta_diaria", "hubias_refs", "hubias_leitura",
     "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python"
 ];
 
@@ -940,6 +942,232 @@ function deletarLink(id) {
     localStorage.setItem("hubias_links", JSON.stringify(links));
     atualizarFiltroTags(); renderLinks();
     toast("Link excluido");
+}
+
+// ===== CADERNO DE ESTUDOS =====
+var cadernoMateriaAtual = null;
+var cadernoPaginaAtual = null;
+var cadernoAutoSaveTimer = null;
+
+function getCadernos() { return JSON.parse(localStorage.getItem("hubias_cadernos") || "[]"); }
+function salvarCadernos(c) { localStorage.setItem("hubias_cadernos", JSON.stringify(c)); }
+
+function adicionarCadernoMateria() {
+    var input = document.getElementById("cadernoNovaMateria");
+    var nome = input.value.trim();
+    if (!nome) return;
+    var cadernos = getCadernos();
+    if (cadernos.find(function (c) { return c.nome === nome; })) { toast("Materia ja existe!"); return; }
+    cadernos.push({
+        id: Date.now(),
+        nome: nome,
+        paginas: [{ id: Date.now() + 1, titulo: "Pagina 1", conteudo: "", criado: new Date().toLocaleString("pt-BR") }]
+    });
+    salvarCadernos(cadernos);
+    input.value = "";
+    renderCadernoSidebar();
+    // Selecionar a nova materia
+    selecionarCadernoMateria(cadernos[cadernos.length - 1].id);
+    toast("Materia '" + nome + "' criada!");
+}
+
+function renderCadernoSidebar() {
+    var container = document.getElementById("cadernoMaterias");
+    var cadernos = getCadernos();
+    if (cadernos.length === 0) {
+        container.innerHTML = '<p style="color:#64748b;padding:20px;text-align:center;font-size:0.82rem;">Crie sua primeira materia acima.</p>';
+        return;
+    }
+    container.innerHTML = "";
+    cadernos.forEach(function (c) {
+        var div = document.createElement("div");
+        div.className = "caderno-materia-item" + (cadernoMateriaAtual === c.id ? " active" : "");
+        div.onclick = function () { selecionarCadernoMateria(c.id); };
+        div.innerHTML =
+            '<span class="caderno-materia-nome">' + esc(c.nome) + '</span>' +
+            '<span class="caderno-materia-count">' + c.paginas.length + ' pag</span>' +
+            '<button class="caderno-materia-del" onclick="event.stopPropagation();confirmar(\'Excluir materia \\&quot;' + esc(c.nome).replace(/'/g, "\\'") + '\\&quot; e todas as paginas?\', function(){excluirCadernoMateria(' + c.id + ')})" title="Excluir">x</button>';
+        container.appendChild(div);
+    });
+}
+
+function selecionarCadernoMateria(id) {
+    cadernoMateriaAtual = id;
+    var cadernos = getCadernos();
+    var materia = cadernos.find(function (c) { return c.id === id; });
+    if (!materia) return;
+
+    document.getElementById("cadernoVazio").style.display = "none";
+    document.getElementById("cadernoAtivo").style.display = "flex";
+    document.getElementById("cadernoPreview").style.display = "none";
+
+    // Selecionar primeira pagina
+    cadernoPaginaAtual = materia.paginas[0] ? materia.paginas[0].id : null;
+    atualizarCadernoPaginaSelect();
+    carregarPaginaCaderno();
+    renderCadernoSidebar();
+}
+
+function atualizarCadernoPaginaSelect() {
+    var cadernos = getCadernos();
+    var materia = cadernos.find(function (c) { return c.id === cadernoMateriaAtual; });
+    if (!materia) return;
+    var select = document.getElementById("cadernoPaginaSelect");
+    select.innerHTML = "";
+    materia.paginas.forEach(function (p) {
+        select.innerHTML += '<option value="' + p.id + '"' + (p.id === cadernoPaginaAtual ? ' selected' : '') + '>' + esc(p.titulo || "Sem titulo") + '</option>';
+    });
+}
+
+function trocarPaginaCaderno() {
+    cadernoPaginaAtual = parseInt(document.getElementById("cadernoPaginaSelect").value);
+    carregarPaginaCaderno();
+}
+
+function carregarPaginaCaderno() {
+    var cadernos = getCadernos();
+    var materia = cadernos.find(function (c) { return c.id === cadernoMateriaAtual; });
+    if (!materia) return;
+    var pagina = materia.paginas.find(function (p) { return p.id === cadernoPaginaAtual; });
+    if (!pagina) return;
+
+    document.getElementById("cadernoPaginaTitulo").value = pagina.titulo || "";
+    document.getElementById("cadernoConteudo").value = pagina.conteudo || "";
+    atualizarCadernoCharCount();
+    document.getElementById("cadernoPreview").style.display = "none";
+}
+
+function novaPaginaCaderno() {
+    var cadernos = getCadernos();
+    var materia = cadernos.find(function (c) { return c.id === cadernoMateriaAtual; });
+    if (!materia) return;
+
+    var num = materia.paginas.length + 1;
+    var nova = { id: Date.now(), titulo: "Pagina " + num, conteudo: "", criado: new Date().toLocaleString("pt-BR") };
+    materia.paginas.push(nova);
+    salvarCadernos(cadernos);
+
+    cadernoPaginaAtual = nova.id;
+    atualizarCadernoPaginaSelect();
+    carregarPaginaCaderno();
+    renderCadernoSidebar();
+    toast("Nova pagina criada!");
+}
+
+function excluirPaginaCaderno() {
+    var cadernos = getCadernos();
+    var materia = cadernos.find(function (c) { return c.id === cadernoMateriaAtual; });
+    if (!materia || materia.paginas.length <= 1) { toast("Nao pode excluir a unica pagina!"); return; }
+
+    materia.paginas = materia.paginas.filter(function (p) { return p.id !== cadernoPaginaAtual; });
+    salvarCadernos(cadernos);
+    cadernoPaginaAtual = materia.paginas[0].id;
+    atualizarCadernoPaginaSelect();
+    carregarPaginaCaderno();
+    renderCadernoSidebar();
+    toast("Pagina excluida");
+}
+
+function excluirCadernoMateria(id) {
+    var cadernos = getCadernos().filter(function (c) { return c.id !== id; });
+    salvarCadernos(cadernos);
+    if (cadernoMateriaAtual === id) {
+        cadernoMateriaAtual = null;
+        cadernoPaginaAtual = null;
+        document.getElementById("cadernoVazio").style.display = "flex";
+        document.getElementById("cadernoAtivo").style.display = "none";
+    }
+    renderCadernoSidebar();
+    toast("Materia excluida");
+}
+
+function salvarCadernoAuto() {
+    if (cadernoAutoSaveTimer) clearTimeout(cadernoAutoSaveTimer);
+    cadernoAutoSaveTimer = setTimeout(function () {
+        var cadernos = getCadernos();
+        var materia = cadernos.find(function (c) { return c.id === cadernoMateriaAtual; });
+        if (!materia) return;
+        var pagina = materia.paginas.find(function (p) { return p.id === cadernoPaginaAtual; });
+        if (!pagina) return;
+
+        pagina.titulo = document.getElementById("cadernoPaginaTitulo").value.trim() || "Sem titulo";
+        pagina.conteudo = document.getElementById("cadernoConteudo").value;
+        pagina.editado = new Date().toLocaleString("pt-BR");
+        salvarCadernos(cadernos);
+        atualizarCadernoPaginaSelect();
+    }, 500);
+    atualizarCadernoCharCount();
+}
+
+function atualizarCadernoCharCount() {
+    var texto = document.getElementById("cadernoConteudo").value;
+    var el = document.getElementById("cadernoCharCount");
+    var chars = texto.length;
+    var words = texto.trim() ? texto.trim().split(/\s+/).length : 0;
+    el.textContent = chars + " caracteres | " + words + " palavras";
+}
+
+function cadernoFmt(prefixo, sufixo) {
+    var ta = document.getElementById("cadernoConteudo");
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var texto = ta.value;
+    var selecionado = texto.substring(start, end);
+
+    ta.value = texto.substring(0, start) + prefixo + selecionado + sufixo + texto.substring(end);
+    ta.selectionStart = start + prefixo.length;
+    ta.selectionEnd = start + prefixo.length + selecionado.length;
+    ta.focus();
+    ta.dispatchEvent(new Event("input"));
+}
+
+function toggleCadernoPreview() {
+    var preview = document.getElementById("cadernoPreview");
+    if (preview.style.display === "none") {
+        var md = document.getElementById("cadernoConteudo").value;
+        preview.innerHTML = renderMarkdown(md);
+        preview.style.display = "block";
+    } else {
+        preview.style.display = "none";
+    }
+}
+
+function renderMarkdown(text) {
+    if (!text) return '<p style="color:#64748b;">Nada para visualizar.</p>';
+    var html = esc(text);
+    // Blocos de codigo ```
+    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    // Headers
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    // Negrito e italico
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // Codigo inline
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Blockquote
+    html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+    // Listas
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+    // HR
+    html = html.replace(/^---$/gm, '<hr>');
+    // Paragrafos
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    html = '<p>' + html + '</p>';
+    // Limpar tags vazias
+    html = html.replace(/<p><\/p>/g, '');
+    html = html.replace(/<p>(<h[23]>)/g, '$1');
+    html = html.replace(/(<\/h[23]>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<ul>)/g, '$1');
+    html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<blockquote>)/g, '$1');
+    html = html.replace(/(<\/blockquote>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<hr>)<\/p>/g, '$1');
+    html = html.replace(/<p>(<pre>)/g, '$1');
+    html = html.replace(/(<\/pre>)<\/p>/g, '$1');
+    return html;
 }
 
 // ===== BLOCO DE NOTAS =====

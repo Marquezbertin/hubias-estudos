@@ -12,6 +12,14 @@
 </head>
 <body>
 
+    <!-- LOADING DATABASE -->
+    <div id="dbLoading" style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:10000;flex-direction:column;gap:15px;">
+        <h1 style="color:#e2e8f0;font-size:1.5rem;margin:0;">Hub PRO de IAs</h1>
+        <p style="color:#94a3b8;font-size:0.85rem;margin:0;">Iniciando banco de dados SQLite...</p>
+        <div style="width:36px;height:36px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:dbspin 0.8s linear infinite;"></div>
+        <style>@keyframes dbspin{to{transform:rotate(360deg)}}</style>
+    </div>
+
     <!-- BACKUP WARNING BANNER -->
     <div id="backupWarning" class="backup-warning" style="display:none;">
         <span>Voce nao faz backup ha mais de 7 dias. Seus dados estao apenas neste navegador!</span>
@@ -619,6 +627,14 @@
 
         <div class="backup-extra">
             <div class="backup-card">
+                <h3>Banco de Dados SQLite</h3>
+                <p>Exporte ou importe o banco de dados completo como arquivo SQLite (.db).</p>
+                <button class="btn-primary" onclick="exportarDB()" style="background:linear-gradient(135deg,#6366f1,#a855f7);">Exportar .db</button>
+                <input type="file" id="importarDBArquivo" accept=".db,.sqlite,.sqlite3" style="display:none;" onchange="importarDB(event)">
+                <button class="btn-secondary" onclick="document.getElementById('importarDBArquivo').click()" style="margin-top:8px;">Importar .db</button>
+                <p style="margin-top:8px;font-size:0.72rem;color:#64748b;" id="dbSizeInfo"></p>
+            </div>
+            <div class="backup-card">
                 <h3>Exportar por Secao</h3>
                 <p>Baixe apenas os dados de uma secao especifica.</p>
                 <div class="backup-secao-btns">
@@ -660,6 +676,7 @@
         <p id="storageInfo" style="margin-top:4px;font-size:0.72rem;"></p>
     </footer>
 
+    <script src="db.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

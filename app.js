@@ -28,31 +28,43 @@ var IAS = [
 
 // ===== INICIALIZACAO =====
 document.addEventListener("DOMContentLoaded", function () {
-    renderCards("todas");
-    carregarPrompts();
-    renderFavoritos();
-    renderHistorico();
-    renderTemplates();
-    renderPlanos();
-    atualizarSelectsDecks();
-    renderFlashcards();
-    atualizarFiltroTags();
-    renderLinks();
-    atualizarSelectsMaterias();
-    renderNotas();
-    atualizarDisplayPomodoro();
-    renderPomodoroStats();
-    autoBackupCheck();
-    registerSW();
-    renderMetaDiaria();
-    initEditor();
-    renderCadernoSidebar();
-    iniciarAutoBackup();
-    atualizarStorageInfo();
-    atualizarFormRef();
-    renderRefsSalvas();
-    renderLeituraHistorico();
-    renderCheat();
+    var loadingEl = document.getElementById("dbLoading");
+
+    function iniciarApp() {
+        if (loadingEl) loadingEl.style.display = "none";
+        renderCards("todas");
+        carregarPrompts();
+        renderFavoritos();
+        renderHistorico();
+        renderTemplates();
+        renderPlanos();
+        atualizarSelectsDecks();
+        renderFlashcards();
+        atualizarFiltroTags();
+        renderLinks();
+        atualizarSelectsMaterias();
+        renderNotas();
+        atualizarDisplayPomodoro();
+        renderPomodoroStats();
+        autoBackupCheck();
+        registerSW();
+        renderMetaDiaria();
+        initEditor();
+        renderCadernoSidebar();
+        iniciarAutoBackup();
+        atualizarStorageInfo();
+        atualizarFormRef();
+        renderRefsSalvas();
+        renderLeituraHistorico();
+        renderCheat();
+    }
+
+    HubDB.init().then(function () {
+        iniciarApp();
+    }).catch(function (err) {
+        console.warn("HubDB falhou, usando localStorage como fallback:", err);
+        iniciarApp();
+    });
 });
 
 // ===== CONFIRM DIALOG =====
@@ -150,7 +162,7 @@ function filtrar(categoria, e) {
 function abrirIA(ia) {
     window.open(ia.url, "_blank", "noopener,noreferrer");
 
-    var historico = JSON.parse(localStorage.getItem("hubias_historico") || "[]");
+    var historico = JSON.parse(HubDB.getItem("hubias_historico") || "[]");
     historico.unshift({
         nome: ia.nome,
         icon: ia.icon,
@@ -158,13 +170,13 @@ function abrirIA(ia) {
         data: new Date().toLocaleString("pt-BR")
     });
     if (historico.length > 50) historico = historico.slice(0, 50);
-    localStorage.setItem("hubias_historico", JSON.stringify(historico));
+    HubDB.setItem("hubias_historico", JSON.stringify(historico));
     toast("Abrindo " + ia.nome + "...");
 }
 
 // ===== FAVORITOS =====
 function getFavoritos() {
-    return JSON.parse(localStorage.getItem("hubias_favoritos") || "[]");
+    return JSON.parse(HubDB.getItem("hubias_favoritos") || "[]");
 }
 
 function toggleFavorito(e, nome) {
@@ -178,7 +190,7 @@ function toggleFavorito(e, nome) {
         favoritos.splice(idx, 1);
         toast(nome + " removido dos favoritos");
     }
-    localStorage.setItem("hubias_favoritos", JSON.stringify(favoritos));
+    HubDB.setItem("hubias_favoritos", JSON.stringify(favoritos));
     var categoriaAtiva = document.querySelector(".filtro.active");
     var cat = categoriaAtiva ? categoriaAtiva.textContent.toLowerCase() : "todas";
     renderCards(cat);
@@ -211,7 +223,7 @@ function renderFavoritos() {
 // ===== HISTORICO =====
 function renderHistorico() {
     var container = document.getElementById("historicoContainer");
-    var historico = JSON.parse(localStorage.getItem("hubias_historico") || "[]");
+    var historico = JSON.parse(HubDB.getItem("hubias_historico") || "[]");
     if (historico.length === 0) {
         container.innerHTML = '<p class="empty-msg">Nenhum acesso registrado ainda.</p>';
         return;
@@ -228,7 +240,7 @@ function renderHistorico() {
 }
 
 function limparHistorico() {
-    localStorage.removeItem("hubias_historico");
+    HubDB.removeItem("hubias_historico");
     renderHistorico();
     toast("Historico limpo!");
 }
@@ -272,16 +284,16 @@ function copiarPrompt() {
 function salvarPrompt() {
     var texto = document.getElementById("outputPrompt").value.trim();
     if (!texto) { toast("Gere um prompt primeiro!"); return; }
-    var prompts = JSON.parse(localStorage.getItem("hubias_prompts") || "[]");
+    var prompts = JSON.parse(HubDB.getItem("hubias_prompts") || "[]");
     prompts.unshift({ texto: texto, data: new Date().toLocaleString("pt-BR") });
-    localStorage.setItem("hubias_prompts", JSON.stringify(prompts));
+    HubDB.setItem("hubias_prompts", JSON.stringify(prompts));
     carregarPrompts();
     toast("Prompt salvo!");
 }
 
 function carregarPrompts() {
     var container = document.getElementById("listaPrompts");
-    var prompts = JSON.parse(localStorage.getItem("hubias_prompts") || "[]");
+    var prompts = JSON.parse(HubDB.getItem("hubias_prompts") || "[]");
     if (prompts.length === 0) { container.innerHTML = '<p class="empty-msg">Nenhum prompt salvo ainda.</p>'; return; }
     container.innerHTML = "";
     prompts.forEach(function (item, index) {
@@ -300,14 +312,14 @@ function carregarPrompts() {
 }
 
 function copiarPromptSalvo(index) {
-    var prompts = JSON.parse(localStorage.getItem("hubias_prompts") || "[]");
+    var prompts = JSON.parse(HubDB.getItem("hubias_prompts") || "[]");
     if (prompts[index]) {
         navigator.clipboard.writeText(prompts[index].texto).then(function () { toast("Prompt copiado!"); }).catch(function () { toast("Erro ao copiar"); });
     }
 }
 
 function usarPromptSalvo(index) {
-    var prompts = JSON.parse(localStorage.getItem("hubias_prompts") || "[]");
+    var prompts = JSON.parse(HubDB.getItem("hubias_prompts") || "[]");
     if (prompts[index]) {
         document.getElementById("outputPrompt").value = prompts[index].texto;
         mostrarSecao("prompts");
@@ -316,9 +328,9 @@ function usarPromptSalvo(index) {
 }
 
 function deletarPrompt(index) {
-    var prompts = JSON.parse(localStorage.getItem("hubias_prompts") || "[]");
+    var prompts = JSON.parse(HubDB.getItem("hubias_prompts") || "[]");
     prompts.splice(index, 1);
-    localStorage.setItem("hubias_prompts", JSON.stringify(prompts));
+    HubDB.setItem("hubias_prompts", JSON.stringify(prompts));
     carregarPrompts();
     toast("Prompt excluido");
 }
@@ -357,7 +369,7 @@ function buscarGlobal() {
     });
 
     // Buscar em prompts salvos
-    JSON.parse(localStorage.getItem("hubias_prompts") || "[]").forEach(function (p) {
+    JSON.parse(HubDB.getItem("hubias_prompts") || "[]").forEach(function (p) {
         if (p.texto.toLowerCase().indexOf(termo) !== -1) {
             resultados.push({ tipo: "Prompt", titulo: p.texto.substring(0, 60), desc: p.data, secao: "prompts" });
         }
@@ -380,7 +392,7 @@ function buscarGlobal() {
 
 // ===== ESTATISTICAS =====
 function renderStats() {
-    var pomDados = JSON.parse(localStorage.getItem("hubias_pomodoro") || "{}");
+    var pomDados = JSON.parse(HubDB.getItem("hubias_pomodoro") || "{}");
     var totalSessoes = 0, totalMinutos = 0;
     Object.keys(pomDados).forEach(function (dia) {
         totalSessoes += pomDados[dia].sessoes || 0;
@@ -402,7 +414,7 @@ function renderStats() {
     document.getElementById("statLinksTotal").textContent = getLinks().length;
 
     // IAs mais usadas
-    var historico = JSON.parse(localStorage.getItem("hubias_historico") || "[]");
+    var historico = JSON.parse(HubDB.getItem("hubias_historico") || "[]");
     var contagem = {}, iconMap = {};
     historico.forEach(function (h) { contagem[h.nome] = (contagem[h.nome] || 0) + 1; iconMap[h.nome] = h.icon; });
     var ranking = Object.keys(contagem).map(function (nome) { return { nome: nome, count: contagem[nome], icon: iconMap[nome] }; }).sort(function (a, b) { return b.count - a.count; }).slice(0, 6);
@@ -455,7 +467,7 @@ var BACKUP_KEYS = [
 function exportarDados() {
     var dados = {};
     BACKUP_KEYS.forEach(function (key) {
-        var val = localStorage.getItem(key);
+        var val = HubDB.getItem(key);
         if (val) dados[key] = JSON.parse(val);
     });
     dados._backup_date = new Date().toISOString();
@@ -468,7 +480,7 @@ function exportarDados() {
     a.click();
     URL.revokeObjectURL(url);
 
-    localStorage.setItem("hubias_ultimo_backup", new Date().toISOString());
+    HubDB.setItem("hubias_ultimo_backup", new Date().toISOString());
     document.getElementById("backupWarning").style.display = "none";
     atualizarStorageInfo();
     toast("Backup exportado com sucesso!");
@@ -485,7 +497,7 @@ function importarDados(event) {
             var importados = 0;
             BACKUP_KEYS.forEach(function (key) {
                 if (dados[key] !== undefined) {
-                    localStorage.setItem(key, JSON.stringify(dados[key]));
+                    HubDB.setItem(key, JSON.stringify(dados[key]));
                     importados++;
                 }
             });
@@ -512,7 +524,7 @@ function renderBackupResumo() {
     ];
     container.innerHTML = "";
     itens.forEach(function (item) {
-        var dados = JSON.parse(localStorage.getItem(item.key) || "[]");
+        var dados = JSON.parse(HubDB.getItem(item.key) || "[]");
         var qtd = Array.isArray(dados) ? dados.length : Object.keys(dados).length;
         var div = document.createElement("div");
         div.className = "backup-resumo-item";
@@ -520,7 +532,7 @@ function renderBackupResumo() {
         container.appendChild(div);
     });
 
-    var ultimo = localStorage.getItem("hubias_ultimo_backup");
+    var ultimo = HubDB.getItem("hubias_ultimo_backup");
     var info = document.getElementById("ultimoBackupInfo");
     if (ultimo) {
         info.textContent = "Ultimo backup: " + new Date(ultimo).toLocaleString("pt-BR");
@@ -531,7 +543,7 @@ function renderBackupResumo() {
     // Info do snapshot
     var snapInfo = document.getElementById("snapshotInfo");
     if (snapInfo) {
-        var snap = localStorage.getItem("hubias_auto_snapshot");
+        var snap = HubDB.getItem("hubias_auto_snapshot");
         if (snap) {
             try {
                 var snapData = JSON.parse(snap);
@@ -544,12 +556,19 @@ function renderBackupResumo() {
     }
 
     atualizarStorageInfo();
+
+    // Info do banco SQLite
+    var dbInfo = document.getElementById("dbSizeInfo");
+    if (dbInfo && HubDB.isReady()) {
+        var dbSize = HubDB.getDBFileSize();
+        dbInfo.textContent = "Banco SQLite: " + formatarBytes(dbSize || 0) + " | Motor: sql.js (WebAssembly)";
+    }
 }
 
 function autoBackupCheck() {
-    var ultimo = localStorage.getItem("hubias_ultimo_backup");
+    var ultimo = HubDB.getItem("hubias_ultimo_backup");
     var temDados = BACKUP_KEYS.some(function (k) {
-        var v = localStorage.getItem(k);
+        var v = HubDB.getItem(k);
         return v && v !== "[]" && v !== "{}";
     });
 
@@ -573,16 +592,16 @@ function iniciarAutoBackup() {
     autoBackupInterval = setInterval(function () {
         var snapshot = {};
         BACKUP_KEYS.forEach(function (key) {
-            var val = localStorage.getItem(key);
+            var val = HubDB.getItem(key);
             if (val) snapshot[key] = val; // salva como string para economizar processamento
         });
         // Salvar tambem cadernos e editor
         ["hubias_cadernos", "hubias_snippets", "hubias_refs", "hubias_leitura"].forEach(function (k) {
-            var v = localStorage.getItem(k);
+            var v = HubDB.getItem(k);
             if (v) snapshot[k] = v;
         });
         snapshot._snapshot_date = new Date().toISOString();
-        localStorage.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
+        HubDB.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
         atualizarStorageInfo();
     }, 30 * 60 * 1000); // 30 minutos
 
@@ -590,21 +609,21 @@ function iniciarAutoBackup() {
     setTimeout(function () {
         var snapshot = {};
         BACKUP_KEYS.forEach(function (key) {
-            var val = localStorage.getItem(key);
+            var val = HubDB.getItem(key);
             if (val) snapshot[key] = val;
         });
         ["hubias_cadernos", "hubias_snippets", "hubias_refs", "hubias_leitura"].forEach(function (k) {
-            var v = localStorage.getItem(k);
+            var v = HubDB.getItem(k);
             if (v) snapshot[k] = v;
         });
         snapshot._snapshot_date = new Date().toISOString();
-        localStorage.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
+        HubDB.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
         atualizarStorageInfo();
     }, 5000);
 }
 
 function restaurarAutoSnapshot() {
-    var snapshot = localStorage.getItem("hubias_auto_snapshot");
+    var snapshot = HubDB.getItem("hubias_auto_snapshot");
     if (!snapshot) { toast("Nenhum snapshot automatico encontrado."); return; }
     try {
         var dados = JSON.parse(snapshot);
@@ -614,9 +633,9 @@ function restaurarAutoSnapshot() {
                 // O snapshot salva strings raw, precisamos verificar
                 var val = dados[key];
                 if (typeof val === "string" && (val[0] === "[" || val[0] === "{")) {
-                    localStorage.setItem(key, val);
+                    HubDB.setItem(key, val);
                 } else if (typeof val === "object") {
-                    localStorage.setItem(key, JSON.stringify(val));
+                    HubDB.setItem(key, JSON.stringify(val));
                 }
                 restaurados++;
             }
@@ -632,11 +651,14 @@ function restaurarAutoSnapshot() {
 }
 
 function calcularStorageUsado() {
+    if (HubDB.isReady()) return HubDB.calcStorageUsed();
+    // Fallback: contar no localStorage
     var total = 0;
     for (var i = 0; i < localStorage.length; i++) {
         var key = localStorage.key(i);
         if (key.indexOf("hubias") === 0) {
-            total += localStorage.getItem(key).length * 2; // UTF-16 = 2 bytes por char
+            var val = localStorage.getItem(key);
+            total += (val ? val.length : 0) * 2;
         }
     }
     return total;
@@ -652,14 +674,22 @@ function atualizarStorageInfo() {
     var el = document.getElementById("storageInfo");
     if (!el) return;
     var usado = calcularStorageUsado();
-    var limite = 5 * 1024 * 1024; // ~5MB limite tipico localStorage
-    var pct = Math.round((usado / limite) * 100);
-    var cor = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#10b981";
-    el.innerHTML = 'Dados: <strong style="color:' + cor + ';">' + formatarBytes(usado) + '</strong> / ~5 MB (' + pct + '%)';
 
-    // Aviso se perto do limite
-    if (pct >= 80) {
-        el.innerHTML += ' <span style="color:#f87171;">- Faca backup e limpe dados antigos!</span>';
+    if (HubDB.isReady()) {
+        var dbSize = HubDB.getDBFileSize();
+        var limite = 50 * 1024 * 1024; // ~50MB limite IndexedDB
+        var pct = Math.round((usado / limite) * 100);
+        var cor = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#6366f1";
+        el.innerHTML = 'SQLite + IndexedDB: <strong style="color:' + cor + ';">' + formatarBytes(usado) + '</strong> / ~50 MB (' + pct + '%)' +
+            (dbSize ? ' | DB: ' + formatarBytes(dbSize) : '');
+    } else {
+        var limite = 5 * 1024 * 1024;
+        var pct = Math.round((usado / limite) * 100);
+        var cor = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#10b981";
+        el.innerHTML = 'localStorage: <strong style="color:' + cor + ';">' + formatarBytes(usado) + '</strong> / ~5 MB (' + pct + '%)';
+        if (pct >= 80) {
+            el.innerHTML += ' <span style="color:#f87171;">- Faca backup e limpe dados antigos!</span>';
+        }
     }
 }
 
@@ -676,7 +706,7 @@ function exportarSecao(secao) {
     };
     var key = keyMap[secao];
     if (!key) return;
-    var dados = localStorage.getItem(key);
+    var dados = HubDB.getItem(key);
     if (!dados || dados === "[]" || dados === "{}") { toast("Nenhum dado em " + secao); return; }
 
     var obj = {};
@@ -792,7 +822,7 @@ function copiarTemplate() {
 }
 
 // ===== PLANO DE ESTUDOS =====
-function getPlanos() { return JSON.parse(localStorage.getItem("hubias_planos") || "[]"); }
+function getPlanos() { return JSON.parse(HubDB.getItem("hubias_planos") || "[]"); }
 
 function adicionarPlano() {
     var materia = document.getElementById("planoMateria").value.trim();
@@ -800,7 +830,7 @@ function adicionarPlano() {
     if (!materia) { toast("Digite o nome da materia!"); return; }
     var planos = getPlanos();
     planos.push({ id: Date.now(), materia: materia, dataProva: data || null, topicos: [] });
-    localStorage.setItem("hubias_planos", JSON.stringify(planos));
+    HubDB.setItem("hubias_planos", JSON.stringify(planos));
     document.getElementById("planoMateria").value = "";
     document.getElementById("planoData").value = "";
     renderPlanos();
@@ -849,24 +879,24 @@ function adicionarTopico(planoId) {
     if (!nome) return;
     var planos = getPlanos();
     var plano = planos.find(function (p) { return p.id === planoId; });
-    if (plano) { plano.topicos.push({ nome: nome, feito: false }); localStorage.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
+    if (plano) { plano.topicos.push({ nome: nome, feito: false }); HubDB.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
 }
 
 function toggleTopico(planoId, idx) {
     var planos = getPlanos();
     var plano = planos.find(function (p) { return p.id === planoId; });
-    if (plano && plano.topicos[idx] !== undefined) { plano.topicos[idx].feito = !plano.topicos[idx].feito; localStorage.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
+    if (plano && plano.topicos[idx] !== undefined) { plano.topicos[idx].feito = !plano.topicos[idx].feito; HubDB.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
 }
 
 function removerTopico(planoId, idx) {
     var planos = getPlanos();
     var plano = planos.find(function (p) { return p.id === planoId; });
-    if (plano) { plano.topicos.splice(idx, 1); localStorage.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
+    if (plano) { plano.topicos.splice(idx, 1); HubDB.setItem("hubias_planos", JSON.stringify(planos)); renderPlanos(); }
 }
 
 function deletarPlano(planoId) {
     var planos = getPlanos().filter(function (p) { return p.id !== planoId; });
-    localStorage.setItem("hubias_planos", JSON.stringify(planos));
+    HubDB.setItem("hubias_planos", JSON.stringify(planos));
     renderPlanos();
     toast("Materia removida");
 }
@@ -874,8 +904,8 @@ function deletarPlano(planoId) {
 // ===== FLASHCARDS =====
 var fcModo = "estudo", fcAtualIndex = 0, fcFila = [];
 
-function getFlashcards() { return JSON.parse(localStorage.getItem("hubias_flashcards") || "[]"); }
-function getDecks() { return JSON.parse(localStorage.getItem("hubias_decks") || '["Geral"]'); }
+function getFlashcards() { return JSON.parse(HubDB.getItem("hubias_flashcards") || "[]"); }
+function getDecks() { return JSON.parse(HubDB.getItem("hubias_decks") || '["Geral"]'); }
 
 function atualizarSelectsDecks() {
     var decks = getDecks();
@@ -891,7 +921,7 @@ function adicionarDeck() {
     var decks = getDecks();
     if (decks.indexOf(nome) !== -1) { toast("Deck ja existe!"); return; }
     decks.push(nome);
-    localStorage.setItem("hubias_decks", JSON.stringify(decks));
+    HubDB.setItem("hubias_decks", JSON.stringify(decks));
     atualizarSelectsDecks();
     document.getElementById("fcDeck").value = nome;
     toast("Deck criado!");
@@ -904,7 +934,7 @@ function salvarFlashcard() {
     if (!p || !r) { toast("Preencha pergunta e resposta!"); return; }
     var cards = getFlashcards();
     cards.push({ id: Date.now(), pergunta: p, resposta: r, deck: d, nivel: 0, proximaRevisao: Date.now() });
-    localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+    HubDB.setItem("hubias_flashcards", JSON.stringify(cards));
     document.getElementById("fcPergunta").value = "";
     document.getElementById("fcResposta").value = "";
     renderFlashcards();
@@ -974,7 +1004,7 @@ function responderFC(nivel) {
         else { cards[idx].nivel = Math.min(cards[idx].nivel + 1, SRS_INTERVALOS.length - 1); }
         var intervalo = SRS_INTERVALOS[cards[idx].nivel] || 10080;
         cards[idx].proximaRevisao = Date.now() + intervalo * 60 * 1000;
-        localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+        HubDB.setItem("hubias_flashcards", JSON.stringify(cards));
     }
     fcAtualIndex++;
     document.getElementById("fcEstudoBtns").style.display = "none";
@@ -1006,7 +1036,7 @@ function editarFlashcard(id) {
     if (novaResposta === null) return;
     fc.pergunta = novaPergunta.trim() || fc.pergunta;
     fc.resposta = novaResposta.trim() || fc.resposta;
-    localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+    HubDB.setItem("hubias_flashcards", JSON.stringify(cards));
     renderFlashcards();
     toast("Flashcard atualizado!");
 }
@@ -1034,7 +1064,7 @@ function importarFlashcardsEmLote() {
 
     if (count === 0) { toast("Nenhum card valido. Use o formato: pergunta;resposta"); return; }
 
-    localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+    HubDB.setItem("hubias_flashcards", JSON.stringify(cards));
     document.getElementById("fcImportTexto").value = "";
     renderFlashcards();
     toast(count + " flashcard(s) importado(s)!");
@@ -1042,13 +1072,13 @@ function importarFlashcardsEmLote() {
 
 function deletarFC(id) {
     var cards = getFlashcards().filter(function (c) { return c.id !== id; });
-    localStorage.setItem("hubias_flashcards", JSON.stringify(cards));
+    HubDB.setItem("hubias_flashcards", JSON.stringify(cards));
     renderFlashcards();
     toast("Flashcard excluido");
 }
 
 // ===== BIBLIOTECA DE LINKS =====
-function getLinks() { return JSON.parse(localStorage.getItem("hubias_links") || "[]"); }
+function getLinks() { return JSON.parse(HubDB.getItem("hubias_links") || "[]"); }
 
 function getTagsLinks() {
     var tags = [];
@@ -1074,7 +1104,7 @@ function salvarLink() {
     if (url.indexOf("http") !== 0) url = "https://" + url;
     var links = getLinks();
     links.unshift({ id: Date.now(), url: url, titulo: titulo || url, desc: desc, tag: tag, data: new Date().toLocaleString("pt-BR") });
-    localStorage.setItem("hubias_links", JSON.stringify(links));
+    HubDB.setItem("hubias_links", JSON.stringify(links));
     document.getElementById("linkUrl").value = "";
     document.getElementById("linkTitulo").value = "";
     document.getElementById("linkDesc").value = "";
@@ -1112,7 +1142,7 @@ function renderLinks() {
 
 function deletarLink(id) {
     var links = getLinks().filter(function (l) { return l.id !== id; });
-    localStorage.setItem("hubias_links", JSON.stringify(links));
+    HubDB.setItem("hubias_links", JSON.stringify(links));
     atualizarFiltroTags(); renderLinks();
     toast("Link excluido");
 }
@@ -1122,8 +1152,8 @@ var cadernoMateriaAtual = null;
 var cadernoPaginaAtual = null;
 var cadernoAutoSaveTimer = null;
 
-function getCadernos() { return JSON.parse(localStorage.getItem("hubias_cadernos") || "[]"); }
-function salvarCadernos(c) { localStorage.setItem("hubias_cadernos", JSON.stringify(c)); }
+function getCadernos() { return JSON.parse(HubDB.getItem("hubias_cadernos") || "[]"); }
+function salvarCadernos(c) { HubDB.setItem("hubias_cadernos", JSON.stringify(c)); }
 
 function adicionarCadernoMateria() {
     var input = document.getElementById("cadernoNovaMateria");
@@ -1346,8 +1376,8 @@ function renderMarkdown(text) {
 // ===== BLOCO DE NOTAS =====
 var notaEditandoId = null;
 
-function getMaterias() { return JSON.parse(localStorage.getItem("hubias_materias") || '["Geral"]'); }
-function salvarMaterias(m) { localStorage.setItem("hubias_materias", JSON.stringify(m)); }
+function getMaterias() { return JSON.parse(HubDB.getItem("hubias_materias") || '["Geral"]'); }
+function salvarMaterias(m) { HubDB.setItem("hubias_materias", JSON.stringify(m)); }
 
 function atualizarSelectsMaterias() {
     var materias = getMaterias();
@@ -1370,7 +1400,7 @@ function adicionarMateria() {
     toast("Materia adicionada!");
 }
 
-function getNotas() { return JSON.parse(localStorage.getItem("hubias_notas") || "[]"); }
+function getNotas() { return JSON.parse(HubDB.getItem("hubias_notas") || "[]"); }
 
 function salvarNota() {
     var titulo = document.getElementById("notaTitulo").value.trim();
@@ -1396,7 +1426,7 @@ function salvarNota() {
         toast("Nota salva!");
     }
 
-    localStorage.setItem("hubias_notas", JSON.stringify(notas));
+    HubDB.setItem("hubias_notas", JSON.stringify(notas));
     document.getElementById("notaTitulo").value = "";
     document.getElementById("notaConteudo").value = "";
     renderNotas();
@@ -1465,7 +1495,7 @@ function copiarNota(id) {
 
 function deletarNota(id) {
     var notas = getNotas().filter(function (n) { return n.id !== id; });
-    localStorage.setItem("hubias_notas", JSON.stringify(notas));
+    HubDB.setItem("hubias_notas", JSON.stringify(notas));
     renderNotas();
     toast("Nota excluida");
 }
@@ -1541,18 +1571,18 @@ function setModoPomodoro(modo, btn) {
 
 function registrarSessaoPomodoro() {
     var hoje = new Date().toISOString().split("T")[0];
-    var dados = JSON.parse(localStorage.getItem("hubias_pomodoro") || "{}");
+    var dados = JSON.parse(HubDB.getItem("hubias_pomodoro") || "{}");
     if (!dados[hoje]) dados[hoje] = { sessoes: 0, minutos: 0, lista: [] };
     dados[hoje].sessoes++;
     dados[hoje].minutos += Math.round(pomodoroTotal / 60);
     dados[hoje].lista.unshift(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
-    localStorage.setItem("hubias_pomodoro", JSON.stringify(dados));
+    HubDB.setItem("hubias_pomodoro", JSON.stringify(dados));
     renderPomodoroStats();
 }
 
 function renderPomodoroStats() {
     var hoje = new Date().toISOString().split("T")[0];
-    var dados = JSON.parse(localStorage.getItem("hubias_pomodoro") || "{}");
+    var dados = JSON.parse(HubDB.getItem("hubias_pomodoro") || "{}");
     var dadosHoje = dados[hoje] || { sessoes: 0, minutos: 0, lista: [] };
     document.getElementById("pomSessoesHoje").textContent = dadosHoje.sessoes;
     document.getElementById("pomMinutosHoje").textContent = dadosHoje.minutos;
@@ -1726,22 +1756,22 @@ function copiarRef() {
 function salvarRef() {
     var texto = document.getElementById("refResultado")._texto;
     if (!texto) return;
-    var refs = JSON.parse(localStorage.getItem("hubias_refs") || "[]");
+    var refs = JSON.parse(HubDB.getItem("hubias_refs") || "[]");
     refs.unshift({ texto: texto, data: new Date().toLocaleString("pt-BR") });
-    localStorage.setItem("hubias_refs", JSON.stringify(refs));
+    HubDB.setItem("hubias_refs", JSON.stringify(refs));
     renderRefsSalvas();
     toast("Referencia salva!");
 }
 
 function renderRefsSalvas() {
     var container = document.getElementById("refsSalvas");
-    var refs = JSON.parse(localStorage.getItem("hubias_refs") || "[]");
+    var refs = JSON.parse(HubDB.getItem("hubias_refs") || "[]");
     if (refs.length === 0) { container.innerHTML = '<p class="empty-msg" style="padding:15px;">Nenhuma referencia salva.</p>'; return; }
     container.innerHTML = "";
     refs.forEach(function (r, i) {
         var div = document.createElement("div");
         div.className = "ref-item";
-        div.innerHTML = '<p>' + esc(r.texto) + '</p><div class="ref-item-actions"><span class="ref-item-tipo">' + esc(r.data) + '</span><button class="btn-small" onclick="navigator.clipboard.writeText(JSON.parse(localStorage.getItem(\'hubias_refs\')||\'[]\')[' + i + '].texto);toast(\'Copiada!\')">Copiar</button><button class="btn-small danger" onclick="confirmar(\'Excluir referencia?\',function(){var r=JSON.parse(localStorage.getItem(\'hubias_refs\')||\'[]\');r.splice(' + i + ',1);localStorage.setItem(\'hubias_refs\',JSON.stringify(r));renderRefsSalvas();toast(\'Removida\')})">Excluir</button></div>';
+        div.innerHTML = '<p>' + esc(r.texto) + '</p><div class="ref-item-actions"><span class="ref-item-tipo">' + esc(r.data) + '</span><button class="btn-small" onclick="navigator.clipboard.writeText(JSON.parse(HubDB.getItem(\'hubias_refs\')||\'[]\')[' + i + '].texto);toast(\'Copiada!\')">Copiar</button><button class="btn-small danger" onclick="confirmar(\'Excluir referencia?\',function(){var r=JSON.parse(HubDB.getItem(\'hubias_refs\')||\'[]\');r.splice(' + i + ',1);HubDB.setItem(\'hubias_refs\',JSON.stringify(r));renderRefsSalvas();toast(\'Removida\')})">Excluir</button></div>';
         container.appendChild(div);
     });
 }
@@ -1804,21 +1834,21 @@ function ajustarPaginas(delta) {
 
 function salvarSessaoLeitura() {
     if (leituraSegundos === 0) { toast("Inicie o timer primeiro!"); return; }
-    var sessoes = JSON.parse(localStorage.getItem("hubias_leitura") || "[]");
+    var sessoes = JSON.parse(HubDB.getItem("hubias_leitura") || "[]");
     sessoes.unshift({
         tempo: leituraSegundos,
         paginas: leituraPaginas,
         data: new Date().toLocaleString("pt-BR")
     });
     if (sessoes.length > 50) sessoes = sessoes.slice(0, 50);
-    localStorage.setItem("hubias_leitura", JSON.stringify(sessoes));
+    HubDB.setItem("hubias_leitura", JSON.stringify(sessoes));
     renderLeituraHistorico();
     toast("Sessao de leitura salva!");
 }
 
 function renderLeituraHistorico() {
     var container = document.getElementById("leituraHistorico");
-    var sessoes = JSON.parse(localStorage.getItem("hubias_leitura") || "[]");
+    var sessoes = JSON.parse(HubDB.getItem("hubias_leitura") || "[]");
     if (sessoes.length === 0) { container.innerHTML = '<p class="empty-msg" style="padding:15px;">Nenhuma sessao salva.</p>'; return; }
     container.innerHTML = "";
     sessoes.forEach(function (s) {
@@ -2111,7 +2141,7 @@ function initEditor() {
     var lines = document.getElementById("editorLines");
 
     // Carregar ultimo codigo salvo ou template
-    var saved = localStorage.getItem("hubias_editor_" + editorLang);
+    var saved = HubDB.getItem("hubias_editor_" + editorLang);
     code.value = saved || editorTemplates[editorLang];
     atualizarLinhas();
     atualizarSnippetsSelect();
@@ -2124,7 +2154,7 @@ function initEditor() {
     // Line numbers update
     code.addEventListener("input", function () {
         atualizarLinhas();
-        localStorage.setItem("hubias_editor_" + editorLang, code.value);
+        HubDB.setItem("hubias_editor_" + editorLang, code.value);
     });
 
     // Tab support + Ctrl+Enter
@@ -2155,14 +2185,14 @@ function atualizarLinhas() {
 
 function setEditorLang(lang, btn) {
     // Salvar codigo atual
-    localStorage.setItem("hubias_editor_" + editorLang, document.getElementById("editorCode").value);
+    HubDB.setItem("hubias_editor_" + editorLang, document.getElementById("editorCode").value);
 
     editorLang = lang;
     document.querySelectorAll(".editor-lang").forEach(function (b) { b.classList.remove("active"); });
     btn.classList.add("active");
 
     // Carregar codigo da linguagem
-    var saved = localStorage.getItem("hubias_editor_" + lang);
+    var saved = HubDB.getItem("hubias_editor_" + lang);
     document.getElementById("editorCode").value = saved || editorTemplates[lang];
     atualizarLinhas();
 
@@ -2313,7 +2343,7 @@ function salvarSnippet() {
     var nome = prompt("Nome do snippet:");
     if (!nome || !nome.trim()) return;
     nome = nome.trim();
-    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    var snippets = JSON.parse(HubDB.getItem("hubias_snippets") || "[]");
     snippets.unshift({
         id: Date.now(),
         nome: nome,
@@ -2321,7 +2351,7 @@ function salvarSnippet() {
         code: document.getElementById("editorCode").value,
         data: new Date().toLocaleString("pt-BR")
     });
-    localStorage.setItem("hubias_snippets", JSON.stringify(snippets));
+    HubDB.setItem("hubias_snippets", JSON.stringify(snippets));
     atualizarSnippetsSelect();
     toast("Snippet '" + nome + "' salvo!");
 }
@@ -2329,7 +2359,7 @@ function salvarSnippet() {
 function atualizarSnippetsSelect() {
     var select = document.getElementById("editorSnippets");
     if (!select) return;
-    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    var snippets = JSON.parse(HubDB.getItem("hubias_snippets") || "[]");
     select.innerHTML = '<option value="">Snippets salvos... (' + snippets.length + ')</option>';
     snippets.forEach(function (s) {
         select.innerHTML += '<option value="' + s.id + '">[' + esc(s.lang.toUpperCase()) + '] ' + esc(s.nome) + '</option>';
@@ -2340,7 +2370,7 @@ function carregarSnippet() {
     var select = document.getElementById("editorSnippets");
     var id = parseInt(select.value);
     if (!id) return;
-    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    var snippets = JSON.parse(HubDB.getItem("hubias_snippets") || "[]");
     var snippet = snippets.find(function (s) { return s.id === id; });
     if (!snippet) return;
 
@@ -2359,12 +2389,12 @@ function carregarSnippet() {
 }
 
 // ===== META DIARIA =====
-function getMetaDiaria() { return parseInt(localStorage.getItem("hubias_meta_diaria") || "0"); }
+function getMetaDiaria() { return parseInt(HubDB.getItem("hubias_meta_diaria") || "0"); }
 
 function salvarMetaDiaria() {
     var input = document.getElementById("metaDiariaInput");
     var valor = parseInt(input.value) || 0;
-    localStorage.setItem("hubias_meta_diaria", valor.toString());
+    HubDB.setItem("hubias_meta_diaria", valor.toString());
     renderMetaDiaria();
     toast("Meta atualizada: " + valor + " min/dia");
 }
@@ -2378,7 +2408,7 @@ function renderMetaDiaria() {
         return;
     }
     var hoje = new Date().toISOString().split("T")[0];
-    var pomDados = JSON.parse(localStorage.getItem("hubias_pomodoro") || "{}");
+    var pomDados = JSON.parse(HubDB.getItem("hubias_pomodoro") || "{}");
     var minHoje = (pomDados[hoje] && pomDados[hoje].minutos) || 0;
     var pct = Math.min(Math.round((minHoje / meta) * 100), 100);
     var cor = pct >= 100 ? "#10b981" : pct >= 50 ? "#f59e0b" : "#6366f1";
@@ -2398,7 +2428,7 @@ function togglePinNota(id) {
     var nota = notas.find(function (n) { return n.id === id; });
     if (nota) {
         nota.pinned = !nota.pinned;
-        localStorage.setItem("hubias_notas", JSON.stringify(notas));
+        HubDB.setItem("hubias_notas", JSON.stringify(notas));
         renderNotas();
         toast(nota.pinned ? "Nota fixada no topo!" : "Nota desafixada");
     }
@@ -2428,6 +2458,41 @@ function toast(msg) {
     el.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { el.classList.remove("show"); }, 2500);
+}
+
+// ===== EXPORTAR/IMPORTAR SQLITE .DB =====
+function exportarDB() {
+    if (!HubDB.isReady()) { toast("Banco de dados nao esta pronto!"); return; }
+    var data = HubDB.exportDatabase();
+    if (!data) { toast("Erro ao exportar banco de dados"); return; }
+    var blob = new Blob([data], { type: "application/x-sqlite3" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "hubias_" + new Date().toISOString().split("T")[0] + ".db";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Banco de dados SQLite exportado!");
+}
+
+function importarDB(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+        var data = new Uint8Array(e.target.result);
+        if (HubDB.importDatabase(data)) {
+            renderCards("todas"); carregarPrompts(); renderFavoritos(); renderHistorico();
+            atualizarSelectsMaterias(); renderNotas(); atualizarFiltroTags(); renderLinks();
+            atualizarSelectsDecks(); renderFlashcards(); renderPlanos(); renderPomodoroStats();
+            renderCadernoSidebar(); renderBackupResumo(); atualizarStorageInfo();
+            toast("Banco de dados SQLite importado com sucesso!");
+        } else {
+            toast("Erro: arquivo de banco de dados invalido!");
+        }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = "";
 }
 
 // ===== SERVICE WORKER =====

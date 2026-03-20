@@ -1,8 +1,9 @@
-var CACHE_NAME = 'hubias-v2';
+var CACHE_NAME = 'hubias-v3';
 var ASSETS = [
     './',
     './index.html',
     './style.css',
+    './db.js',
     './app.js',
     './manifest.json'
 ];

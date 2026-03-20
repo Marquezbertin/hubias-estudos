@@ -1,0 +1,10 @@
+{
+    "name": "Hub PRO de IAs - Estudos",
+    "short_name": "Hub IAs",
+    "description": "Seu centro de estudos com inteligencia artificial",
+    "start_url": "index.html",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
+    "icons": []
+}

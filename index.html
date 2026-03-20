@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub PRO de IAs - Estudos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+
+    <!-- BACKUP WARNING BANNER -->
+    <div id="backupWarning" class="backup-warning" style="display:none;">
+        <span>Voce nao faz backup ha mais de 7 dias. Seus dados estao apenas neste navegador!</span>
+        <div class="backup-warning-btns">
+            <button onclick="exportarDados()">Fazer Backup Agora</button>
+            <button onclick="dispensarBackupWarning()">Depois</button>
+        </div>
+    </div>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-content">
+            <h1>Hub PRO de IAs</h1>
+            <div class="header-search">
+                <input type="text" id="buscaGlobal" placeholder="Buscar em tudo... (Ctrl+K)" oninput="buscarGlobal()" onfocus="mostrarSecaoDirect('busca')">
+            </div>
+        </div>
+        <nav id="mainNav">
+            <button class="nav-btn active" onclick="mostrarSecao('ias', event)">IAs</button>
+            <button class="nav-btn" onclick="mostrarSecao('prompts', event)">Prompts</button>
+            <button class="nav-btn" onclick="mostrarSecao('templates', event)">Templates</button>
+            <span class="nav-sep"></span>
+            <button class="nav-btn" onclick="mostrarSecao('flashcards', event)">Flashcards</button>
+            <button class="nav-btn" onclick="mostrarSecao('plano', event)">Plano</button>
+            <button class="nav-btn" onclick="mostrarSecao('pomodoro', event)">Pomodoro</button>
+            <span class="nav-sep"></span>
+            <button class="nav-btn" onclick="mostrarSecao('notas', event)">Notas</button>
+            <button class="nav-btn" onclick="mostrarSecao('links', event)">Links</button>
+            <button class="nav-btn" onclick="mostrarSecao('favoritos', event)">Favoritos</button>
+            <button class="nav-btn" onclick="mostrarSecao('historico', event)">Historico</button>
+            <span class="nav-sep"></span>
+            <button class="nav-btn" onclick="mostrarSecao('stats', event)">Stats</button>
+            <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
+            <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
+        </nav>
+    </header>
+
+    <!-- SECAO: BUSCA GLOBAL -->
+    <section id="secao-busca" class="secao">
+        <h2 class="secao-titulo">Resultados da Busca</h2>
+        <div id="buscaResultados"><p class="empty-msg">Digite algo para buscar em notas, links, flashcards e prompts.</p></div>
+    </section>
+
+    <!-- SECAO: IAs -->
+    <section id="secao-ias" class="secao ativa">
+        <h2 class="secao-titulo">Escolha sua IA</h2>
+        <div class="filtros">
+            <button class="filtro active" onclick="filtrar('todas', event)">Todas</button>
+            <button class="filtro" onclick="filtrar('estudo', event)">Estudo</button>
+            <button class="filtro" onclick="filtrar('pesquisa', event)">Pesquisa</button>
+            <button class="filtro" onclick="filtrar('escrita', event)">Escrita</button>
+            <button class="filtro" onclick="filtrar('codigo', event)">Codigo</button>
+            <button class="filtro" onclick="filtrar('visual', event)">Visual</button>
+        </div>
+        <div class="ia-container" id="iaContainer"></div>
+    </section>
+
+    <!-- SECAO: PROMPTS -->
+    <section id="secao-prompts" class="secao">
+        <h2 class="secao-titulo">Gerador de Prompts Inteligentes</h2>
+        <div class="prompt-generator">
+            <div class="prompt-input-area">
+                <label for="inputAssunto">O que voce quer estudar?</label>
+                <input type="text" id="inputAssunto" placeholder="Ex: Testes de software, React, Matematica...">
+                <label for="inputNivel">Nivel</label>
+                <select id="inputNivel">
+                    <option value="iniciante">Iniciante</option>
+                    <option value="intermediario">Intermediario</option>
+                    <option value="avancado">Avancado</option>
+                </select>
+                <label for="inputEstilo">Estilo de ensino</label>
+                <select id="inputEstilo">
+                    <option value="professor">Professor didatico</option>
+                    <option value="pratico">Exemplos praticos</option>
+                    <option value="resumo">Resumo direto</option>
+                    <option value="exercicios">Foco em exercicios</option>
+                    <option value="analogias">Com analogias simples</option>
+                </select>
+                <button class="btn-primary" onclick="gerarPrompt()">Gerar Prompt</button>
+            </div>
+            <div class="prompt-output-area">
+                <label>Prompt gerado:</label>
+                <textarea id="outputPrompt" readonly placeholder="Seu prompt aparecera aqui..."></textarea>
+                <div class="prompt-actions">
+                    <button class="btn-secondary" onclick="copiarPrompt()">Copiar</button>
+                    <button class="btn-secondary" onclick="salvarPrompt()">Salvar</button>
+                </div>
+            </div>
+        </div>
+        <div class="prompts-salvos">
+            <h3>Prompts Salvos</h3>
+            <div id="listaPrompts"></div>
+        </div>
+    </section>
+
+    <!-- SECAO: TEMPLATES -->
+    <section id="secao-templates" class="secao">
+        <h2 class="secao-titulo">Templates de Prompts Academicos</h2>
+        <p style="text-align:center;color:#94a3b8;margin-bottom:20px;font-size:0.85rem;">Clique em um template, preencha o campo e copie o prompt pronto.</p>
+        <div class="template-input" id="templateInput" style="display:none;">
+            <h3 id="templateNome"></h3>
+            <p id="templateDesc" style="color:#94a3b8;font-size:0.85rem;margin-bottom:12px;"></p>
+            <input type="text" id="templateCampo" placeholder="" onkeydown="if(event.key==='Enter')gerarTemplate()">
+            <div style="display:flex;gap:10px;margin-top:10px;">
+                <button class="btn-primary" onclick="gerarTemplate()" style="flex:1;">Gerar Prompt</button>
+                <button class="btn-secondary" onclick="fecharTemplate()">Voltar</button>
+            </div>
+            <textarea id="templateOutput" readonly placeholder="O prompt gerado aparecera aqui..." style="margin-top:12px;min-height:100px;"></textarea>
+            <button class="btn-secondary" onclick="copiarTemplate()" style="margin-top:8px;">Copiar Prompt</button>
+        </div>
+        <div class="templates-grid" id="templatesGrid"></div>
+    </section>
+
+    <!-- SECAO: FLASHCARDS -->
+    <section id="secao-flashcards" class="secao">
+        <h2 class="secao-titulo">Flashcards</h2>
+        <div class="fc-topo">
+            <div class="fc-form">
+                <input type="text" id="fcPergunta" placeholder="Pergunta / Frente do card">
+                <textarea id="fcResposta" placeholder="Resposta / Verso do card" rows="3"></textarea>
+                <div class="fc-form-row">
+                    <select id="fcDeck"><option value="Geral">Geral</option></select>
+                    <button class="btn-secondary" onclick="adicionarDeck()">+ Deck</button>
+                    <button class="btn-primary" onclick="salvarFlashcard()" style="flex:1;">Criar Card</button>
+                </div>
+            </div>
+        </div>
+        <div class="fc-modo">
+            <button class="fc-modo-btn active" onclick="setModoFC('estudo', this)">Modo Estudo</button>
+            <button class="fc-modo-btn" onclick="setModoFC('lista', this)">Ver Todos</button>
+            <select id="fcFiltroDeck" onchange="renderFlashcards()" style="margin-left:auto;">
+                <option value="">Todos os decks</option>
+            </select>
+        </div>
+        <div id="fcEstudo" class="fc-estudo">
+            <div class="fc-estudo-info" id="fcEstudoInfo"></div>
+            <div class="fc-card-wrapper" id="fcCardWrapper">
+                <div class="fc-card" id="fcCard" onclick="virarFlashcard()">
+                    <div class="fc-card-frente" id="fcFrente"></div>
+                    <div class="fc-card-verso" id="fcVerso"></div>
+                </div>
+            </div>
+            <div class="fc-estudo-btns" id="fcEstudoBtns" style="display:none;">
+                <button class="fc-resp-btn fc-errei" onclick="responderFC('errei')">Errei</button>
+                <button class="fc-resp-btn fc-dificil" onclick="responderFC('dificil')">Dificil</button>
+                <button class="fc-resp-btn fc-facil" onclick="responderFC('facil')">Facil</button>
+            </div>
+        </div>
+        <div id="fcLista" class="fc-lista" style="display:none;"></div>
+    </section>
+
+    <!-- SECAO: PLANO DE ESTUDOS -->
+    <section id="secao-plano" class="secao">
+        <h2 class="secao-titulo">Plano de Estudos</h2>
+        <div class="plano-form">
+            <div class="plano-form-row">
+                <input type="text" id="planoMateria" placeholder="Nome da materia" onkeydown="if(event.key==='Enter')adicionarPlano()">
+                <input type="date" id="planoData">
+                <button class="btn-primary" onclick="adicionarPlano()" style="min-width:120px;">Adicionar</button>
+            </div>
+        </div>
+        <div id="planoContainer"></div>
+    </section>
+
+    <!-- SECAO: POMODORO -->
+    <section id="secao-pomodoro" class="secao">
+        <h2 class="secao-titulo">Pomodoro Timer</h2>
+        <div class="pomodoro-container">
+            <div class="pomodoro-display">
+                <div class="pomodoro-ring">
+                    <svg class="pomodoro-svg" viewBox="0 0 200 200">
+                        <circle class="pomodoro-track" cx="100" cy="100" r="90" />
+                        <circle class="pomodoro-progress" id="pomodoroProgress" cx="100" cy="100" r="90" />
+                    </svg>
+                    <div class="pomodoro-timer-text">
+                        <span id="pomodoroTime">25:00</span>
+                        <span class="pomodoro-label" id="pomodoroLabel">Foco</span>
+                    </div>
+                </div>
+                <div class="pomodoro-controls">
+                    <button class="btn-primary pomodoro-btn" id="btnPomodoro" onclick="togglePomodoro()">Iniciar</button>
+                    <button class="btn-secondary pomodoro-btn" onclick="resetPomodoro()">Resetar</button>
+                </div>
+                <div class="pomodoro-modes">
+                    <button class="pomodoro-mode active" onclick="setModoPomodoro('foco', this)">Foco (25min)</button>
+                    <button class="pomodoro-mode" onclick="setModoPomodoro('curta', this)">Pausa Curta (5min)</button>
+                    <button class="pomodoro-mode" onclick="setModoPomodoro('longa', this)">Pausa Longa (15min)</button>
+                </div>
+            </div>
+            <div class="pomodoro-stats">
+                <h3>Sessoes de Hoje</h3>
+                <div class="pomodoro-stats-grid">
+                    <div class="pomodoro-stat-card">
+                        <span class="pomodoro-stat-num" id="pomSessoesHoje">0</span>
+                        <span class="pomodoro-stat-label">Sessoes</span>
+                    </div>
+                    <div class="pomodoro-stat-card">
+                        <span class="pomodoro-stat-num" id="pomMinutosHoje">0</span>
+                        <span class="pomodoro-stat-label">Minutos</span>
+                    </div>
+                    <div class="pomodoro-stat-card">
+                        <span class="pomodoro-stat-num" id="pomSequencia">0</span>
+                        <span class="pomodoro-stat-label">Sequencia</span>
+                    </div>
+                </div>
+                <div class="pomodoro-historico" id="pomodoroHistorico"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: NOTAS -->
+    <section id="secao-notas" class="secao">
+        <h2 class="secao-titulo">Bloco de Notas</h2>
+        <div class="notas-topo">
+            <div class="notas-novo">
+                <input type="text" id="notaTitulo" placeholder="Titulo da nota...">
+                <select id="notaMateria"><option value="">Sem materia</option></select>
+                <button class="btn-secondary" onclick="adicionarMateria()">+ Materia</button>
+            </div>
+            <textarea id="notaConteudo" placeholder="Cole respostas de IAs, anote insights, escreva livremente..." rows="6"></textarea>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-primary" id="btnSalvarNota" onclick="salvarNota()" style="flex:1;">Salvar Nota</button>
+                <button class="btn-secondary" id="btnCancelarEdicaoNota" onclick="cancelarEdicaoNota()" style="display:none;">Cancelar</button>
+            </div>
+        </div>
+        <div class="notas-filtros">
+            <input type="text" id="notaBusca" placeholder="Buscar notas..." oninput="renderNotas()">
+            <select id="notaFiltroMateria" onchange="renderNotas()">
+                <option value="">Todas as materias</option>
+            </select>
+        </div>
+        <div id="notasContainer"></div>
+    </section>
+
+    <!-- SECAO: LINKS -->
+    <section id="secao-links" class="secao">
+        <h2 class="secao-titulo">Biblioteca de Links</h2>
+        <div class="links-form">
+            <div class="links-form-row">
+                <input type="text" id="linkUrl" placeholder="URL (https://...)">
+                <input type="text" id="linkTitulo" placeholder="Titulo">
+            </div>
+            <div class="links-form-row">
+                <input type="text" id="linkDesc" placeholder="Descricao (opcional)">
+                <input type="text" id="linkTag" placeholder="Tag: artigo, video, paper..." list="linkTagsList">
+                <datalist id="linkTagsList"></datalist>
+            </div>
+            <button class="btn-primary" onclick="salvarLink()">Salvar Link</button>
+        </div>
+        <div class="links-filtros">
+            <input type="text" id="linkBusca" placeholder="Buscar links..." oninput="renderLinks()">
+            <select id="linkFiltroTag" onchange="renderLinks()">
+                <option value="">Todas as tags</option>
+            </select>
+        </div>
+        <div id="linksContainer"></div>
+    </section>
+
+    <!-- SECAO: FAVORITOS -->
+    <section id="secao-favoritos" class="secao">
+        <h2 class="secao-titulo">Suas IAs Favoritas</h2>
+        <div class="ia-container" id="favoritosContainer">
+            <p class="empty-msg" id="emptyFav">Nenhuma IA favoritada ainda. Clique na estrela em qualquer IA!</p>
+        </div>
+    </section>
+
+    <!-- SECAO: HISTORICO -->
+    <section id="secao-historico" class="secao">
+        <h2 class="secao-titulo">Historico de Uso</h2>
+        <button class="btn-secondary" onclick="confirmar('Limpar todo o historico?', limparHistorico)" style="margin-bottom: 15px;">Limpar Historico</button>
+        <div id="historicoContainer">
+            <p class="empty-msg">Nenhum acesso registrado ainda.</p>
+        </div>
+    </section>
+
+    <!-- SECAO: STATS -->
+    <section id="secao-stats" class="secao">
+        <h2 class="secao-titulo">Estatisticas de Estudo</h2>
+        <div class="stats-grid">
+            <div class="stats-card stats-destaque">
+                <span class="stats-card-num" id="statSequencia">0</span>
+                <span class="stats-card-label">Dias seguidos</span>
+            </div>
+            <div class="stats-card">
+                <span class="stats-card-num" id="statPomodoroTotal">0</span>
+                <span class="stats-card-label">Sessoes Pomodoro</span>
+            </div>
+            <div class="stats-card">
+                <span class="stats-card-num" id="statMinutosTotal">0</span>
+                <span class="stats-card-label">Minutos estudados</span>
+            </div>
+            <div class="stats-card">
+                <span class="stats-card-num" id="statNotasTotal">0</span>
+                <span class="stats-card-label">Notas</span>
+            </div>
+            <div class="stats-card">
+                <span class="stats-card-num" id="statFlashcardsTotal">0</span>
+                <span class="stats-card-label">Flashcards</span>
+            </div>
+            <div class="stats-card">
+                <span class="stats-card-num" id="statLinksTotal">0</span>
+                <span class="stats-card-label">Links</span>
+            </div>
+        </div>
+        <div class="stats-secao">
+            <h3>IAs mais usadas</h3>
+            <div id="statsIAsMaisUsadas"></div>
+        </div>
+        <div class="stats-secao">
+            <h3>Pomodoro - Ultimos 7 dias</h3>
+            <div class="stats-semana" id="statsSemana"></div>
+        </div>
+    </section>
+
+    <!-- SECAO: DICAS -->
+    <section id="secao-dicas" class="secao">
+        <h2 class="secao-titulo">Dicas de Ouro</h2>
+        <div class="dicas-container">
+            <div class="dica-card">
+                <h3>Prompt Poderoso</h3>
+                <p>Use este modelo em qualquer IA:</p>
+                <code>"Explique [assunto] como professor, com exemplos praticos, exercicios e correcao"</code>
+            </div>
+            <div class="dica-card">
+                <h3>Combinacao Ideal</h3>
+                <ul>
+                    <li><strong>ChatGPT</strong> - aprender e tirar duvidas</li>
+                    <li><strong>Perplexity</strong> - pesquisar com fontes</li>
+                    <li><strong>NotebookLM</strong> - estudar seus PDFs</li>
+                </ul>
+            </div>
+            <div class="dica-card">
+                <h3>Metodo de Estudo com IA</h3>
+                <ol>
+                    <li>Pergunte o conceito (ChatGPT)</li>
+                    <li>Pesquise fontes (Perplexity)</li>
+                    <li>Resuma seu material (NotebookLM)</li>
+                    <li>Pratique com exercicios (ChatGPT/DeepSeek)</li>
+                    <li>Crie apresentacao (Gamma)</li>
+                </ol>
+            </div>
+            <div class="dica-card">
+                <h3>Para QA / Programacao</h3>
+                <ul>
+                    <li><strong>DeepSeek</strong> - raciocinio logico e codigo</li>
+                    <li><strong>Claude</strong> - analise detalhada de codigo</li>
+                    <li><strong>ChatGPT</strong> - debug e explicacoes</li>
+                    <li><strong>Perplexity</strong> - documentacao e referencias</li>
+                </ul>
+            </div>
+            <div class="dica-card">
+                <h3>Atalhos do Hub</h3>
+                <ul>
+                    <li><strong>Ctrl+K</strong> - Busca global rapida</li>
+                    <li><strong>Enter</strong> - Confirma/envia formularios</li>
+                    <li><strong>Esc</strong> - Fecha dialogos</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: BACKUP -->
+    <section id="secao-backup" class="secao">
+        <h2 class="secao-titulo">Exportar / Importar Dados</h2>
+        <div class="backup-container">
+            <div class="backup-card">
+                <h3>Exportar</h3>
+                <p>Baixe todos os seus dados em um arquivo JSON. Faca backup regularmente!</p>
+                <button class="btn-primary" onclick="exportarDados()">Baixar Backup</button>
+            </div>
+            <div class="backup-card">
+                <h3>Importar</h3>
+                <p>Restaure seus dados a partir de um arquivo JSON. Os dados atuais serao mesclados.</p>
+                <input type="file" id="importarArquivo" accept=".json" style="display:none;" onchange="importarDados(event)">
+                <button class="btn-primary" onclick="document.getElementById('importarArquivo').click()" style="background:linear-gradient(135deg,#10b981,#059669);">Importar Backup</button>
+            </div>
+            <div class="backup-card">
+                <h3>Resumo dos Dados</h3>
+                <div id="backupResumo"></div>
+                <p style="margin-top:12px;font-size:0.75rem;color:#64748b;" id="ultimoBackupInfo"></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONFIRM DIALOG -->
+    <div id="confirmDialog" class="confirm-overlay" style="display:none;">
+        <div class="confirm-box">
+            <p id="confirmMsg"></p>
+            <div class="confirm-btns">
+                <button class="btn-secondary" onclick="fecharConfirm(false)">Cancelar</button>
+                <button class="btn-primary" style="background:#dc2626;margin-top:0;width:auto;" onclick="fecharConfirm(true)">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="toast"></div>
+
+    <footer>
+        <p>Hub PRO de IAs - Estudos | Feito por Bruno</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

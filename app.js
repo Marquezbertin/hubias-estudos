@@ -47,6 +47,8 @@ document.addEventListener("DOMContentLoaded", function () {
     renderMetaDiaria();
     initEditor();
     renderCadernoSidebar();
+    iniciarAutoBackup();
+    atualizarStorageInfo();
     atualizarFormRef();
     renderRefsSalvas();
     renderLeituraHistorico();
@@ -468,6 +470,7 @@ function exportarDados() {
 
     localStorage.setItem("hubias_ultimo_backup", new Date().toISOString());
     document.getElementById("backupWarning").style.display = "none";
+    atualizarStorageInfo();
     toast("Backup exportado com sucesso!");
 }
 
@@ -524,6 +527,23 @@ function renderBackupResumo() {
     } else {
         info.textContent = "Nenhum backup realizado ainda.";
     }
+
+    // Info do snapshot
+    var snapInfo = document.getElementById("snapshotInfo");
+    if (snapInfo) {
+        var snap = localStorage.getItem("hubias_auto_snapshot");
+        if (snap) {
+            try {
+                var snapData = JSON.parse(snap);
+                var snapDate = snapData._snapshot_date ? new Date(snapData._snapshot_date).toLocaleString("pt-BR") : "desconhecida";
+                snapInfo.textContent = "Ultimo snapshot: " + snapDate;
+            } catch (e) { snapInfo.textContent = ""; }
+        } else {
+            snapInfo.textContent = "Nenhum snapshot ainda. Sera criado em breve.";
+        }
+    }
+
+    atualizarStorageInfo();
 }
 
 function autoBackupCheck() {
@@ -544,6 +564,144 @@ function autoBackupCheck() {
 function dispensarBackupWarning() {
     document.getElementById("backupWarning").style.display = "none";
 }
+
+// ===== AUTO-BACKUP & PROTECAO DE DADOS =====
+var autoBackupInterval = null;
+
+function iniciarAutoBackup() {
+    // Auto-snapshot a cada 30 minutos
+    autoBackupInterval = setInterval(function () {
+        var snapshot = {};
+        BACKUP_KEYS.forEach(function (key) {
+            var val = localStorage.getItem(key);
+            if (val) snapshot[key] = val; // salva como string para economizar processamento
+        });
+        // Salvar tambem cadernos e editor
+        ["hubias_cadernos", "hubias_snippets", "hubias_refs", "hubias_leitura"].forEach(function (k) {
+            var v = localStorage.getItem(k);
+            if (v) snapshot[k] = v;
+        });
+        snapshot._snapshot_date = new Date().toISOString();
+        localStorage.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
+        atualizarStorageInfo();
+    }, 30 * 60 * 1000); // 30 minutos
+
+    // Primeiro snapshot imediato (5 seg apos carregar)
+    setTimeout(function () {
+        var snapshot = {};
+        BACKUP_KEYS.forEach(function (key) {
+            var val = localStorage.getItem(key);
+            if (val) snapshot[key] = val;
+        });
+        ["hubias_cadernos", "hubias_snippets", "hubias_refs", "hubias_leitura"].forEach(function (k) {
+            var v = localStorage.getItem(k);
+            if (v) snapshot[k] = v;
+        });
+        snapshot._snapshot_date = new Date().toISOString();
+        localStorage.setItem("hubias_auto_snapshot", JSON.stringify(snapshot));
+        atualizarStorageInfo();
+    }, 5000);
+}
+
+function restaurarAutoSnapshot() {
+    var snapshot = localStorage.getItem("hubias_auto_snapshot");
+    if (!snapshot) { toast("Nenhum snapshot automatico encontrado."); return; }
+    try {
+        var dados = JSON.parse(snapshot);
+        var restaurados = 0;
+        Object.keys(dados).forEach(function (key) {
+            if (key.indexOf("hubias_") === 0) {
+                // O snapshot salva strings raw, precisamos verificar
+                var val = dados[key];
+                if (typeof val === "string" && (val[0] === "[" || val[0] === "{")) {
+                    localStorage.setItem(key, val);
+                } else if (typeof val === "object") {
+                    localStorage.setItem(key, JSON.stringify(val));
+                }
+                restaurados++;
+            }
+        });
+        var dataSnap = dados._snapshot_date ? new Date(dados._snapshot_date).toLocaleString("pt-BR") : "desconhecida";
+        // Re-render tudo
+        renderCards("todas"); carregarPrompts(); renderFavoritos(); renderHistorico();
+        atualizarSelectsMaterias(); renderNotas(); atualizarFiltroTags(); renderLinks();
+        atualizarSelectsDecks(); renderFlashcards(); renderPlanos(); renderPomodoroStats();
+        renderCadernoSidebar(); renderBackupResumo();
+        toast("Snapshot restaurado! (" + dataSnap + ") " + restaurados + " itens.");
+    } catch (e) { toast("Erro ao restaurar snapshot."); }
+}
+
+function calcularStorageUsado() {
+    var total = 0;
+    for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key.indexOf("hubias") === 0) {
+            total += localStorage.getItem(key).length * 2; // UTF-16 = 2 bytes por char
+        }
+    }
+    return total;
+}
+
+function formatarBytes(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+function atualizarStorageInfo() {
+    var el = document.getElementById("storageInfo");
+    if (!el) return;
+    var usado = calcularStorageUsado();
+    var limite = 5 * 1024 * 1024; // ~5MB limite tipico localStorage
+    var pct = Math.round((usado / limite) * 100);
+    var cor = pct >= 80 ? "#f87171" : pct >= 50 ? "#fbbf24" : "#10b981";
+    el.innerHTML = 'Dados: <strong style="color:' + cor + ';">' + formatarBytes(usado) + '</strong> / ~5 MB (' + pct + '%)';
+
+    // Aviso se perto do limite
+    if (pct >= 80) {
+        el.innerHTML += ' <span style="color:#f87171;">- Faca backup e limpe dados antigos!</span>';
+    }
+}
+
+function exportarSecao(secao) {
+    var keyMap = {
+        cadernos: "hubias_cadernos",
+        flashcards: "hubias_flashcards",
+        notas: "hubias_notas",
+        links: "hubias_links",
+        planos: "hubias_planos",
+        prompts: "hubias_prompts",
+        snippets: "hubias_snippets",
+        refs: "hubias_refs"
+    };
+    var key = keyMap[secao];
+    if (!key) return;
+    var dados = localStorage.getItem(key);
+    if (!dados || dados === "[]" || dados === "{}") { toast("Nenhum dado em " + secao); return; }
+
+    var obj = {};
+    obj[key] = JSON.parse(dados);
+    obj._export_date = new Date().toISOString();
+    obj._export_section = secao;
+
+    var blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "hubias_" + secao + "_" + new Date().toISOString().split("T")[0] + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(secao + " exportado!");
+}
+
+// Protecao contra fechamento acidental
+window.addEventListener("beforeunload", function (e) {
+    // So avisa se o Pomodoro esta rodando ou se tem nota sendo editada
+    if (pomodoroRodando || notaEditandoId || leituraRodando) {
+        e.preventDefault();
+        e.returnValue = "";
+    }
+});
 
 // ===== TEMPLATES =====
 var TEMPLATES = [

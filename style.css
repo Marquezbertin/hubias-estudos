@@ -539,6 +539,22 @@ label:first-child { margin-top: 0; }
 .backup-resumo-item span:first-child { color: #94a3b8; }
 .backup-resumo-item span:last-child { color: #f1f5f9; font-weight: 600; }
 
+.backup-extra {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 15px;
+    max-width: 900px;
+    margin: 20px auto 0;
+}
+
+.backup-secao-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.backup-secao-btns button { font-size: 0.78rem; padding: 5px 12px; }
+
 /* ===== TEMPLATES ===== */
 .templates-grid {
     display: grid;

@@ -616,6 +616,29 @@
                 <p style="margin-top:12px;font-size:0.75rem;color:#64748b;" id="ultimoBackupInfo"></p>
             </div>
         </div>
+
+        <div class="backup-extra">
+            <div class="backup-card">
+                <h3>Exportar por Secao</h3>
+                <p>Baixe apenas os dados de uma secao especifica.</p>
+                <div class="backup-secao-btns">
+                    <button class="btn-secondary" onclick="exportarSecao('cadernos')">Cadernos</button>
+                    <button class="btn-secondary" onclick="exportarSecao('flashcards')">Flashcards</button>
+                    <button class="btn-secondary" onclick="exportarSecao('notas')">Notas</button>
+                    <button class="btn-secondary" onclick="exportarSecao('links')">Links</button>
+                    <button class="btn-secondary" onclick="exportarSecao('planos')">Plano</button>
+                    <button class="btn-secondary" onclick="exportarSecao('prompts')">Prompts</button>
+                    <button class="btn-secondary" onclick="exportarSecao('snippets')">Snippets</button>
+                    <button class="btn-secondary" onclick="exportarSecao('refs')">Referencias</button>
+                </div>
+            </div>
+            <div class="backup-card">
+                <h3>Ponto de Restauracao</h3>
+                <p>O hub salva automaticamente um snapshot a cada 30 minutos. Use se algo der errado.</p>
+                <button class="btn-primary" onclick="confirmar('Restaurar ultimo snapshot automatico? Os dados atuais serao substituidos.', restaurarAutoSnapshot)" style="background:linear-gradient(135deg,#f59e0b,#d97706);">Restaurar Ultimo Snapshot</button>
+                <p style="margin-top:8px;font-size:0.72rem;color:#64748b;" id="snapshotInfo"></p>
+            </div>
+        </div>
     </section>
 
     <!-- CONFIRM DIALOG -->
@@ -634,6 +657,7 @@
 
     <footer>
         <p>Hub PRO de IAs - Estudos | Feito por Bruno</p>
+        <p id="storageInfo" style="margin-top:4px;font-size:0.72rem;"></p>
     </footer>
 
     <script src="app.js"></script>

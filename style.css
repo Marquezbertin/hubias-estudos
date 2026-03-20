@@ -973,6 +973,157 @@ label:first-child { margin-top: 0; }
 .pomodoro-hist-item span:first-child { color: #cbd5e1; }
 .pomodoro-hist-item span:last-child { color: #64748b; }
 
+/* ===== EDITOR DE CODIGO ===== */
+.editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.editor-langs { display: flex; gap: 4px; }
+
+.editor-lang {
+    background: #1e293b;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.3s;
+}
+
+.editor-lang:first-child { border-radius: 8px 0 0 8px; }
+.editor-lang:last-child { border-radius: 0 8px 8px 0; }
+.editor-lang.active { background: #6366f1; color: white; border-color: #6366f1; }
+
+.editor-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.editor-actions select { width: auto; min-width: 160px; }
+
+.editor-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 450px;
+}
+
+@media (max-width: 768px) {
+    .editor-container { grid-template-columns: 1fr; min-height: auto; }
+}
+
+.editor-panel {
+    background: #0d1117;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.editor-lines {
+    background: #161b22;
+    color: #484f58;
+    padding: 14px 8px 14px 12px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    text-align: right;
+    user-select: none;
+    min-width: 42px;
+    overflow: hidden;
+    border-right: 1px solid #21262d;
+    white-space: pre-wrap;
+}
+
+.editor-code {
+    flex: 1;
+    background: #0d1117 !important;
+    color: #e6edf3 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 14px 16px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    resize: none;
+    min-height: 400px;
+    outline: none;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+.editor-output-panel {
+    background: #1e293b;
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #334155;
+}
+
+.editor-output-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    background: #161b22;
+    border-bottom: 1px solid #21262d;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+.editor-output {
+    flex: 1;
+    position: relative;
+    min-height: 400px;
+}
+
+.editor-preview {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+    position: absolute;
+    top: 0; left: 0;
+}
+
+.editor-console {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 14px;
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    position: absolute;
+    top: 0; left: 0;
+}
+
+.editor-console .log-error { color: #f87171; }
+.editor-console .log-warn { color: #fbbf24; }
+.editor-console .log-info { color: #60a5fa; }
+.editor-console .log-result { color: #10b981; }
+
+@media (max-width: 768px) {
+    .editor-output { min-height: 250px; }
+    .editor-code { min-height: 250px; }
+    .editor-output-panel { border-left: none; border-top: 1px solid #334155; }
+}
+
 /* ===== CONFIRM DIALOG ===== */
 .confirm-overlay {
     position: fixed;

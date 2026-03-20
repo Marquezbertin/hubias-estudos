@@ -44,6 +44,7 @@
             <button class="nav-btn" onclick="mostrarSecao('historico', event)">Historico</button>
             <span class="nav-sep"></span>
             <button class="nav-btn" onclick="mostrarSecao('stats', event)">Stats</button>
+            <button class="nav-btn" onclick="mostrarSecao('editor', event)">Editor</button>
             <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
             <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
         </nav>
@@ -336,6 +337,46 @@
             <h3>Pomodoro - Ultimos 7 dias</h3>
             <div class="stats-semana" id="statsSemana"></div>
         </div>
+    </section>
+
+    <!-- SECAO: EDITOR DE CODIGO -->
+    <section id="secao-editor" class="secao">
+        <h2 class="secao-titulo">Editor de Codigo</h2>
+
+        <div class="editor-toolbar">
+            <div class="editor-langs">
+                <button class="editor-lang active" onclick="setEditorLang('html', this)">HTML</button>
+                <button class="editor-lang" onclick="setEditorLang('javascript', this)">JavaScript</button>
+                <button class="editor-lang" onclick="setEditorLang('python', this)">Python</button>
+            </div>
+            <div class="editor-actions">
+                <select id="editorSnippets" onchange="carregarSnippet()">
+                    <option value="">Snippets salvos...</option>
+                </select>
+                <button class="btn-secondary" onclick="salvarSnippet()">Salvar</button>
+                <button class="btn-primary" onclick="executarCodigo()" style="margin-top:0;width:auto;padding:8px 20px;">Executar (Ctrl+Enter)</button>
+            </div>
+        </div>
+
+        <div class="editor-container">
+            <div class="editor-panel">
+                <div class="editor-wrapper">
+                    <div class="editor-lines" id="editorLines">1</div>
+                    <textarea id="editorCode" class="editor-code" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="Escreva seu codigo aqui..."></textarea>
+                </div>
+            </div>
+            <div class="editor-output-panel">
+                <div class="editor-output-header">
+                    <span id="editorOutputLabel">Preview</span>
+                    <button class="btn-small" onclick="limparOutput()">Limpar</button>
+                </div>
+                <div id="editorOutput" class="editor-output">
+                    <iframe id="editorPreview" class="editor-preview" sandbox="allow-scripts allow-modals"></iframe>
+                    <pre id="editorConsole" class="editor-console" style="display:none;"></pre>
+                </div>
+            </div>
+        </div>
+        <p style="text-align:center;color:#64748b;font-size:0.75rem;margin-top:10px;">Python requer internet para carregar o interpretador. HTML e JS funcionam offline.</p>
     </section>
 
     <!-- SECAO: DICAS -->

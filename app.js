@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
     autoBackupCheck();
     registerSW();
     renderMetaDiaria();
+    initEditor();
 });
 
 // ===== CONFIRM DIALOG =====
@@ -89,6 +90,7 @@ function mostrarSecao(nome, e) {
     if (nome === "links") { atualizarFiltroTags(); renderLinks(); }
     if (nome === "notas") { atualizarSelectsMaterias(); renderNotas(); }
     if (nome === "pomodoro") renderPomodoroStats();
+    if (nome === "editor") { atualizarLinhas(); atualizarSnippetsSelect(); }
 }
 
 function mostrarSecaoDirect(nome) {
@@ -435,7 +437,8 @@ var BACKUP_KEYS = [
     "hubias_favoritos", "hubias_historico", "hubias_prompts",
     "hubias_notas", "hubias_materias", "hubias_links",
     "hubias_flashcards", "hubias_decks", "hubias_planos",
-    "hubias_pomodoro"
+    "hubias_pomodoro", "hubias_snippets", "hubias_meta_diaria",
+    "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python"
 ];
 
 function exportarDados() {
@@ -1186,6 +1189,266 @@ function playSound() {
             osc.stop(ctx.currentTime + delay / 1000 + 0.3);
         });
     } catch (e) { /* browser sem suporte */ }
+}
+
+// ===== EDITOR DE CODIGO =====
+var editorLang = "html";
+var editorTemplates = {
+    html: '<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            display: flex;\n            justify-content: center;\n            align-items: center;\n            min-height: 100vh;\n            margin: 0;\n            background: #1a1a2e;\n            color: #e0e0e0;\n        }\n        h1 { color: #6366f1; }\n    </style>\n</head>\n<body>\n    <div>\n        <h1>Ola Mundo!</h1>\n        <p>Edite este HTML e clique Executar.</p>\n    </div>\n</body>\n</html>',
+    javascript: '// Escreva seu JavaScript aqui\n// Use console.log() para ver a saida\n\nfunction fatorial(n) {\n    if (n <= 1) return 1;\n    return n * fatorial(n - 1);\n}\n\nfor (var i = 1; i <= 10; i++) {\n    console.log(i + "! = " + fatorial(i));\n}\n\nconsole.log("\\nArray methods:");\nvar nums = [5, 3, 8, 1, 9, 2];\nconsole.log("Original:", nums);\nconsole.log("Sorted:", nums.slice().sort(function(a,b){return a-b}));\nconsole.log("Filtered >4:", nums.filter(function(n){return n>4}));\nconsole.log("Sum:", nums.reduce(function(a,b){return a+b}, 0));',
+    python: '# Escreva seu Python aqui\n# Requer internet para carregar o interpretador\n\ndef fatorial(n):\n    if n <= 1:\n        return 1\n    return n * fatorial(n - 1)\n\nfor i in range(1, 11):\n    print(f"{i}! = {fatorial(i)}")\n\n# Listas\nnums = [5, 3, 8, 1, 9, 2]\nprint(f"\\nOriginal: {nums}")\nprint(f"Sorted: {sorted(nums)}")\nprint(f"Filtered >4: {[n for n in nums if n > 4]}")\nprint(f"Sum: {sum(nums)}")'
+};
+
+function initEditor() {
+    var code = document.getElementById("editorCode");
+    var lines = document.getElementById("editorLines");
+
+    // Carregar ultimo codigo salvo ou template
+    var saved = localStorage.getItem("hubias_editor_" + editorLang);
+    code.value = saved || editorTemplates[editorLang];
+    atualizarLinhas();
+    atualizarSnippetsSelect();
+
+    // Sync scroll
+    code.addEventListener("scroll", function () {
+        lines.scrollTop = code.scrollTop;
+    });
+
+    // Line numbers update
+    code.addEventListener("input", function () {
+        atualizarLinhas();
+        localStorage.setItem("hubias_editor_" + editorLang, code.value);
+    });
+
+    // Tab support + Ctrl+Enter
+    code.addEventListener("keydown", function (e) {
+        if (e.key === "Tab") {
+            e.preventDefault();
+            var start = code.selectionStart;
+            var end = code.selectionEnd;
+            code.value = code.value.substring(0, start) + "    " + code.value.substring(end);
+            code.selectionStart = code.selectionEnd = start + 4;
+            code.dispatchEvent(new Event("input"));
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            executarCodigo();
+        }
+    });
+}
+
+function atualizarLinhas() {
+    var code = document.getElementById("editorCode");
+    var lines = document.getElementById("editorLines");
+    var count = code.value.split("\n").length;
+    var nums = [];
+    for (var i = 1; i <= count; i++) nums.push(i);
+    lines.textContent = nums.join("\n");
+}
+
+function setEditorLang(lang, btn) {
+    // Salvar codigo atual
+    localStorage.setItem("hubias_editor_" + editorLang, document.getElementById("editorCode").value);
+
+    editorLang = lang;
+    document.querySelectorAll(".editor-lang").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+
+    // Carregar codigo da linguagem
+    var saved = localStorage.getItem("hubias_editor_" + lang);
+    document.getElementById("editorCode").value = saved || editorTemplates[lang];
+    atualizarLinhas();
+
+    // Ajustar output
+    var preview = document.getElementById("editorPreview");
+    var console_el = document.getElementById("editorConsole");
+    var label = document.getElementById("editorOutputLabel");
+
+    if (lang === "html") {
+        preview.style.display = "block";
+        console_el.style.display = "none";
+        label.textContent = "Preview";
+    } else {
+        preview.style.display = "none";
+        console_el.style.display = "block";
+        label.textContent = "Console";
+    }
+}
+
+function executarCodigo() {
+    var code = document.getElementById("editorCode").value;
+
+    if (editorLang === "html") {
+        executarHTML(code);
+    } else if (editorLang === "javascript") {
+        executarJS(code);
+    } else if (editorLang === "python") {
+        executarPython(code);
+    }
+}
+
+function executarHTML(code) {
+    var preview = document.getElementById("editorPreview");
+    preview.style.display = "block";
+    document.getElementById("editorConsole").style.display = "none";
+    preview.srcdoc = code;
+    toast("HTML renderizado!");
+}
+
+function executarJS(code) {
+    var preview = document.getElementById("editorPreview");
+    var consoleEl = document.getElementById("editorConsole");
+    preview.style.display = "none";
+    consoleEl.style.display = "block";
+    consoleEl.innerHTML = "";
+
+    function addLog(msg, cls) {
+        var line = document.createElement("div");
+        line.className = cls || "";
+        line.textContent = msg;
+        consoleEl.appendChild(line);
+    }
+
+    // Override console in a sandboxed way
+    var output = [];
+    var fakeConsole = {
+        log: function () { var args = Array.prototype.slice.call(arguments); addLog(args.map(function(a) { return typeof a === "object" ? JSON.stringify(a, null, 2) : String(a); }).join(" ")); },
+        error: function () { var args = Array.prototype.slice.call(arguments); addLog("Error: " + args.join(" "), "log-error"); },
+        warn: function () { var args = Array.prototype.slice.call(arguments); addLog("Warn: " + args.join(" "), "log-warn"); },
+        info: function () { var args = Array.prototype.slice.call(arguments); addLog("Info: " + args.join(" "), "log-info"); }
+    };
+
+    try {
+        var fn = new Function("console", code);
+        var startTime = performance.now();
+        fn(fakeConsole);
+        var elapsed = (performance.now() - startTime).toFixed(1);
+        addLog("\n--- Executado em " + elapsed + "ms ---", "log-result");
+    } catch (err) {
+        addLog("Erro: " + err.message, "log-error");
+        if (err.stack) {
+            var stackLine = err.stack.split("\n")[1];
+            if (stackLine) addLog(stackLine.trim(), "log-error");
+        }
+    }
+    toast("JavaScript executado!");
+}
+
+function executarPython(code) {
+    var preview = document.getElementById("editorPreview");
+    var consoleEl = document.getElementById("editorConsole");
+    preview.style.display = "none";
+    consoleEl.style.display = "block";
+    consoleEl.innerHTML = '<div class="log-info">Carregando interpretador Python...</div>';
+
+    loadSkulpt(function () {
+        consoleEl.innerHTML = "";
+
+        function outf(text) {
+            var line = document.createElement("div");
+            line.textContent = text;
+            consoleEl.appendChild(line);
+        }
+
+        window.Sk.configure({
+            output: outf,
+            read: function (x) {
+                if (window.Sk.builtinFiles === undefined || window.Sk.builtinFiles["files"][x] === undefined) {
+                    throw "File not found: '" + x + "'";
+                }
+                return window.Sk.builtinFiles["files"][x];
+            }
+        });
+
+        var startTime = performance.now();
+        window.Sk.misceval.asyncToPromise(function () {
+            return window.Sk.importMainWithBody("<stdin>", false, code, true);
+        }).then(function () {
+            var elapsed = (performance.now() - startTime).toFixed(1);
+            var line = document.createElement("div");
+            line.className = "log-result";
+            line.textContent = "\n--- Executado em " + elapsed + "ms ---";
+            consoleEl.appendChild(line);
+            toast("Python executado!");
+        }).catch(function (err) {
+            var line = document.createElement("div");
+            line.className = "log-error";
+            line.textContent = "Erro: " + err.toString();
+            consoleEl.appendChild(line);
+        });
+    });
+}
+
+function loadSkulpt(callback) {
+    if (window.Sk) { callback(); return; }
+    var s1 = document.createElement("script");
+    s1.src = "https://skulpt.org/js/skulpt.min.js";
+    s1.onload = function () {
+        var s2 = document.createElement("script");
+        s2.src = "https://skulpt.org/js/skulpt-stdlib.js";
+        s2.onload = callback;
+        s2.onerror = function () { toast("Erro ao carregar Python. Verifique sua conexao."); };
+        document.head.appendChild(s2);
+    };
+    s1.onerror = function () {
+        document.getElementById("editorConsole").innerHTML = '<div class="log-error">Python requer internet para carregar o interpretador Skulpt.\nUse JavaScript ou HTML no modo offline.</div>';
+    };
+    document.head.appendChild(s1);
+}
+
+function limparOutput() {
+    document.getElementById("editorConsole").innerHTML = "";
+    document.getElementById("editorPreview").srcdoc = "";
+}
+
+// Snippets
+function salvarSnippet() {
+    var nome = prompt("Nome do snippet:");
+    if (!nome || !nome.trim()) return;
+    nome = nome.trim();
+    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    snippets.unshift({
+        id: Date.now(),
+        nome: nome,
+        lang: editorLang,
+        code: document.getElementById("editorCode").value,
+        data: new Date().toLocaleString("pt-BR")
+    });
+    localStorage.setItem("hubias_snippets", JSON.stringify(snippets));
+    atualizarSnippetsSelect();
+    toast("Snippet '" + nome + "' salvo!");
+}
+
+function atualizarSnippetsSelect() {
+    var select = document.getElementById("editorSnippets");
+    if (!select) return;
+    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    select.innerHTML = '<option value="">Snippets salvos... (' + snippets.length + ')</option>';
+    snippets.forEach(function (s) {
+        select.innerHTML += '<option value="' + s.id + '">[' + esc(s.lang.toUpperCase()) + '] ' + esc(s.nome) + '</option>';
+    });
+}
+
+function carregarSnippet() {
+    var select = document.getElementById("editorSnippets");
+    var id = parseInt(select.value);
+    if (!id) return;
+    var snippets = JSON.parse(localStorage.getItem("hubias_snippets") || "[]");
+    var snippet = snippets.find(function (s) { return s.id === id; });
+    if (!snippet) return;
+
+    // Trocar para a linguagem do snippet
+    editorLang = snippet.lang;
+    document.querySelectorAll(".editor-lang").forEach(function (b) { b.classList.remove("active"); });
+    document.querySelectorAll(".editor-lang").forEach(function (b) {
+        if (b.textContent.toLowerCase() === snippet.lang) b.classList.add("active");
+    });
+    setEditorLang(snippet.lang, document.querySelector(".editor-lang.active"));
+
+    document.getElementById("editorCode").value = snippet.code;
+    atualizarLinhas();
+    select.value = "";
+    toast("Snippet carregado!");
 }
 
 // ===== META DIARIA =====

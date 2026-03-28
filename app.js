@@ -2704,7 +2704,7 @@ function getChatiaKey() {
 }
 
 function getChatiaModelo() {
-    return localStorage.getItem("hubias_chatia_modelo") || "gemini-1.5-flash";
+    return localStorage.getItem("hubias_chatia_modelo") || "gemini-2.0-flash-lite";
 }
 
 function mostrarChatConfig() {
@@ -2838,18 +2838,45 @@ function enviarChat() {
     scrollChat();
 
     var modelo = getChatiaModelo();
-    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modelo + ":generateContent?key=" + key, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    }).then(function (resp) {
-        if (!resp.ok) {
-            return resp.json().then(function (err) {
-                throw new Error(err.error ? err.error.message : "Erro " + resp.status);
-            });
-        }
-        return resp.json();
-    }).then(function (data) {
+    var fallbackModels = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro-latest"];
+
+    function tentarModelo(nomeModelo) {
+        return fetch("https://generativelanguage.googleapis.com/v1beta/models/" + nomeModelo + ":generateContent?key=" + key, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+        }).then(function (resp) {
+            if (!resp.ok) {
+                return resp.json().then(function (err) {
+                    var msg = err.error ? err.error.message : "Erro " + resp.status;
+                    throw new Error(msg);
+                });
+            }
+            return resp.json();
+        });
+    }
+
+    function tentarComFallback(idx) {
+        var m = idx === 0 ? modelo : fallbackModels[idx - 1];
+        if (idx > fallbackModels.length) return Promise.reject(new Error("Nenhum modelo disponivel. Verifique sua API Key em aistudio.google.com/apikey"));
+        // Pular se ja tentou o modelo principal
+        if (idx > 0 && m === modelo) return tentarComFallback(idx + 1);
+        return tentarModelo(m).catch(function (err) {
+            if (err.message.indexOf("not found") !== -1 || err.message.indexOf("not supported") !== -1 || err.message.indexOf("quota") !== -1) {
+                return tentarComFallback(idx + 1);
+            }
+            throw err;
+        }).then(function (data) {
+            // Salvar modelo que funcionou
+            if (m !== modelo) {
+                localStorage.setItem("hubias_chatia_modelo", m);
+                document.getElementById("chatiaStatus").textContent = m + " conectado";
+            }
+            return data;
+        });
+    }
+
+    tentarComFallback(0).then(function (data) {
         var typing = document.getElementById("chatiaTyping");
         if (typing) typing.remove();
 

@@ -776,10 +776,10 @@ CREATE POLICY "Users manage own data" ON hubias_sync
             <input type="password" id="chatiaApiKey" placeholder="Cole sua API Key do Google AI Studio aqui...">
             <label style="margin-top:10px;">Modelo</label>
             <select id="chatiaModelo">
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (recomendado - free tier generoso)</option>
-                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (recomendado - free tier generoso)</option>
                 <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (mais lento, mais preciso)</option>
+                <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
+                <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (mais lento, mais preciso)</option>
             </select>
             <button class="btn-primary" onclick="salvarChatiaKey()" style="margin-top:10px;">Salvar e Conectar</button>
             <p id="chatiaKeyStatus" style="font-size:0.75rem;color:#64748b;margin-top:8px;"></p>

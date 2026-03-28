@@ -73,6 +73,30 @@ function fecharConfirm(aceito) {
     confirmCallback = null;
 }
 
+// ===== TEMA CLARO / ESCURO =====
+function toggleTema() {
+    var atual = document.documentElement.getAttribute("data-theme");
+    var novo = atual === "light" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", novo);
+    localStorage.setItem("hubias_tema", novo);
+    document.getElementById("btnTema").textContent = novo === "light" ? "\u2600" : "\u263E";
+}
+
+function carregarTema() {
+    var salvo = localStorage.getItem("hubias_tema");
+    if (!salvo) {
+        // Auto-detectar preferencia do sistema
+        salvo = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    if (salvo === "light") {
+        document.documentElement.setAttribute("data-theme", "light");
+    }
+    var btn = document.getElementById("btnTema");
+    if (btn) btn.textContent = salvo === "light" ? "\u2600" : "\u263E";
+}
+
+carregarTema();
+
 // ===== NAVEGACAO =====
 
 // Nav groups: toggle dropdown

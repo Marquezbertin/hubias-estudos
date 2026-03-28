@@ -32,7 +32,10 @@
     <!-- HEADER -->
     <header>
         <div class="header-content">
-            <h1>Hub PRO de IAs</h1>
+            <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+                <h1>Hub PRO de IAs</h1>
+                <button class="theme-toggle" onclick="toggleTema()" id="btnTema" title="Alternar tema claro/escuro">&#9790;</button>
+            </div>
             <div class="header-search">
                 <input type="text" id="buscaGlobal" placeholder="Buscar em tudo... (Ctrl+K)" oninput="buscarGlobal()" onfocus="mostrarSecaoDirect('busca')">
             </div>

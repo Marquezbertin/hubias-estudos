@@ -761,25 +761,27 @@ CREATE POLICY "Users manage own data" ON hubias_sync
 
         <!-- Config API Key -->
         <div id="chatiaConfig" class="backup-card" style="max-width:600px;margin:0 auto 20px;">
-            <h3>Configurar Google Gemini (Gratuito)</h3>
+            <h3>Configurar Chat IA (Gratuito via OpenRouter)</h3>
             <details style="background:#0f172a;border-radius:8px;padding:12px;margin:10px 0;">
-                <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como obter a API Key (30 segundos)</summary>
+                <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como obter a API Key gratis (1 minuto)</summary>
                 <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
-                    <li>Acesse <strong>aistudio.google.com/apikey</strong></li>
-                    <li>Faca login com sua conta Google</li>
-                    <li>Clique em <strong>"Create API Key"</strong></li>
-                    <li>Copie a chave e cole no campo abaixo</li>
-                    <li>Pronto! 15 requisicoes/min gratis com Gemini Flash</li>
+                    <li>Acesse <strong>openrouter.ai</strong></li>
+                    <li>Clique em <strong>"Sign In"</strong> (pode usar conta Google)</li>
+                    <li>Va em <strong>"Keys"</strong> no menu (ou openrouter.ai/keys)</li>
+                    <li>Clique <strong>"Create Key"</strong></li>
+                    <li>Copie a chave (comeca com <code>sk-or-</code>) e cole abaixo</li>
+                    <li>Pronto! Modelos gratuitos, sem cartao de credito</li>
                 </ol>
             </details>
-            <label>API Key</label>
-            <input type="password" id="chatiaApiKey" placeholder="Cole sua API Key do Google AI Studio aqui...">
-            <label style="margin-top:10px;">Modelo</label>
+            <label>API Key do OpenRouter</label>
+            <input type="password" id="chatiaApiKey" placeholder="sk-or-v1-...">
+            <label style="margin-top:10px;">Modelo (todos gratuitos)</label>
             <select id="chatiaModelo">
-                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (recomendado - free tier generoso)</option>
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                <option value="gemini-1.5-flash-latest">Gemini 1.5 Flash</option>
-                <option value="gemini-1.5-pro-latest">Gemini 1.5 Pro (mais lento, mais preciso)</option>
+                <option value="nvidia/nemotron-3-super-120b-a12b:free">NVIDIA Nemotron Super 120B (recomendado)</option>
+                <option value="minimax/minimax-m2.5:free">MiniMax M2.5</option>
+                <option value="stepfun/step-3.5-flash:free">StepFun 3.5 Flash</option>
+                <option value="nvidia/nemotron-3-nano-30b-a3b:free">NVIDIA Nemotron Nano 30B</option>
+                <option value="openrouter/free">Auto (melhor modelo free disponivel)</option>
             </select>
             <button class="btn-primary" onclick="salvarChatiaKey()" style="margin-top:10px;">Salvar e Conectar</button>
             <p id="chatiaKeyStatus" style="font-size:0.75rem;color:#64748b;margin-top:8px;"></p>

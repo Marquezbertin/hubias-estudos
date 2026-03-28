@@ -2693,12 +2693,18 @@ function salvarChatiaKey() {
     var key = document.getElementById("chatiaApiKey").value.trim();
     if (!key) { toast("Cole uma API Key valida"); return; }
     localStorage.setItem("hubias_chatia_key", key);
-    toast("API Key salva!");
+    var modelo = document.getElementById("chatiaModelo").value;
+    localStorage.setItem("hubias_chatia_modelo", modelo);
+    toast("API Key salva! Modelo: " + modelo);
     renderChatIA();
 }
 
 function getChatiaKey() {
     return localStorage.getItem("hubias_chatia_key") || "";
+}
+
+function getChatiaModelo() {
+    return localStorage.getItem("hubias_chatia_modelo") || "gemini-1.5-flash";
 }
 
 function mostrarChatConfig() {
@@ -2709,15 +2715,20 @@ function mostrarChatConfig() {
 
 function renderChatIA() {
     var key = getChatiaKey();
+    var modelo = getChatiaModelo();
     if (key) {
         document.getElementById("chatiaConfig").style.display = "none";
         document.getElementById("chatiaArea").style.display = "block";
         document.getElementById("chatiaKeyStatus").textContent = "Chave configurada";
+        document.getElementById("chatiaStatus").textContent = modelo + " conectado";
     } else {
         document.getElementById("chatiaConfig").style.display = "block";
         document.getElementById("chatiaArea").style.display = "none";
         document.getElementById("chatiaKeyStatus").textContent = "";
     }
+    // Manter select sincronizado
+    var sel = document.getElementById("chatiaModelo");
+    if (sel) sel.value = modelo;
 }
 
 function coletarContextoHub() {
@@ -2826,7 +2837,8 @@ function enviarChat() {
     document.getElementById("chatiaMessages").appendChild(typingEl);
     scrollChat();
 
-    fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + key, {
+    var modelo = getChatiaModelo();
+    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + modelo + ":generateContent?key=" + key, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)

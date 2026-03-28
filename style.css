@@ -1517,6 +1517,245 @@ footer {
     border-top: 1px solid #1e293b;
 }
 
+/* ===== CHAT IA ===== */
+.chatia-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: #1e293b;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+.chatia-status { color: #10b981; font-size: 0.82rem; font-weight: 600; }
+.chatia-ctx-toggle { font-size: 0.78rem; color: #94a3b8; margin-left: auto; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.chatia-ctx-toggle input { cursor: pointer; }
+
+.chatia-messages {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 400px;
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+}
+.chatia-msg { display: flex; max-width: 85%; }
+.chatia-msg.chatia-user { align-self: flex-end; }
+.chatia-msg.chatia-bot { align-self: flex-start; }
+.chatia-msg-content {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+.chatia-user .chatia-msg-content {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+.chatia-bot .chatia-msg-content {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-bottom-left-radius: 4px;
+}
+.chatia-bot .chatia-msg-content code {
+    background: #334155;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+}
+.chatia-bot .chatia-msg-content pre {
+    background: #020617;
+    padding: 10px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-size: 0.8rem;
+}
+.chatia-bot .chatia-msg-content pre code {
+    background: none;
+    padding: 0;
+}
+.chatia-typing { color: #94a3b8; font-style: italic; font-size: 0.82rem; padding: 8px 14px; }
+
+.chatia-input-area {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    align-items: flex-end;
+}
+.chatia-input {
+    flex: 1;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-family: inherit;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    transition: border-color 0.3s;
+}
+.chatia-input:focus { border-color: #6366f1; outline: none; }
+.chatia-send {
+    margin-top: 0 !important;
+    width: auto !important;
+    padding: 10px 24px !important;
+    min-height: 44px;
+    border-radius: 12px !important;
+}
+
+/* ===== POS-GRADUACAO ===== */
+.pos-topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+.pos-link-fmu {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+.pos-stats-mini {
+    display: flex;
+    gap: 15px;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+.pos-stats-mini span { background: #1e293b; padding: 4px 12px; border-radius: 8px; }
+
+.pos-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #1e293b;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.pos-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #6366f1, #10b981);
+    border-radius: 8px;
+    transition: width 0.5s ease;
+}
+
+.pos-form { margin-bottom: 20px; }
+.pos-form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.pos-form-row input, .pos-form-row select { flex: 1; min-width: 140px; }
+
+.pos-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.3s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.pos-card:hover { border-color: #6366f1; transform: translateY(-1px); }
+.pos-card-icon { font-size: 1.8rem; flex-shrink: 0; }
+.pos-card-info { flex: 1; }
+.pos-card-info h4 { color: #e2e8f0; font-size: 0.95rem; margin-bottom: 2px; }
+.pos-card-info span { color: #64748b; font-size: 0.78rem; }
+.pos-card-badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.pos-badge-cursando { background: #1e3a5f; color: #60a5fa; }
+.pos-badge-concluida { background: #14532d; color: #4ade80; }
+.pos-badge-pendente { background: #422006; color: #fbbf24; }
+.pos-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* Detalhe da disciplina */
+.pos-detalhe {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+}
+.pos-detalhe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.pos-detalhe-header h3 { color: #a78bfa; font-size: 1.1rem; }
+.pos-detalhe-secao { margin-bottom: 20px; }
+.pos-detalhe-secao h4 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+.pos-detalhe-secao textarea {
+    width: 100%;
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 10px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    resize: vertical;
+}
+
+.pos-pdf-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.pos-pdf-info { font-size: 0.72rem; color: #64748b; }
+.pos-pdf-lista { display: flex; flex-direction: column; gap: 6px; }
+.pos-pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #0f172a;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+}
+.pos-pdf-item span { flex: 1; color: #e2e8f0; }
+.pos-pdf-item .pos-pdf-size { color: #64748b; font-size: 0.72rem; }
+
+.pos-links-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.pos-links-form input { flex: 1; }
+.pos-link-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #1e293b;
+    font-size: 0.82rem;
+}
+.pos-link-item a { color: #60a5fa; text-decoration: none; flex: 1; }
+.pos-link-item a:hover { text-decoration: underline; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
     .header-content h1 { font-size: 1.4rem; }
@@ -1525,6 +1764,9 @@ footer {
     .card-icon { font-size: 1.5rem; }
     .dicas-container { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .chatia-msg { max-width: 95%; }
+    .pos-form-row { flex-direction: column; }
+    .pos-topo { flex-direction: column; align-items: stretch; }
 }
 
 @media (max-width: 400px) {

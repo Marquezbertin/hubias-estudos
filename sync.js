@@ -17,7 +17,8 @@ var HubSync = (function () {
         "hubias_flashcards", "hubias_decks", "hubias_planos",
         "hubias_pomodoro", "hubias_cadernos", "hubias_snippets",
         "hubias_meta_diaria", "hubias_refs", "hubias_leitura",
-        "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python"
+        "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python",
+        "hubias_pos_disciplinas"
     ];
 
     // ===== CONFIGURACAO =====
@@ -245,6 +246,48 @@ var HubSync = (function () {
     function isAutoSyncing() { return autoSyncTimer !== null; }
     function lastSync() { return _lastSync; }
 
+    // ===== SUPABASE STORAGE (PDFs) =====
+    var STORAGE_BUCKET = "hubias-pdfs";
+
+    function uploadFile(filePath, file) {
+        if (!client || !_loggedIn) return Promise.reject(new Error("Nao conectado"));
+        return client.auth.getUser().then(function (r) {
+            if (r.error) throw r.error;
+            var fullPath = r.data.user.id + "/" + filePath;
+            return client.storage.from(STORAGE_BUCKET).upload(fullPath, file, {
+                cacheControl: "3600",
+                upsert: false
+            });
+        }).then(function (result) {
+            if (result.error) throw result.error;
+            return result.data;
+        });
+    }
+
+    function getFileUrl(filePath) {
+        if (!client || !_loggedIn) return Promise.reject(new Error("Nao conectado"));
+        return client.auth.getUser().then(function (r) {
+            if (r.error) throw r.error;
+            var fullPath = r.data.user.id + "/" + filePath;
+            var result = client.storage.from(STORAGE_BUCKET).getPublicUrl(fullPath);
+            return result.data.publicUrl;
+        });
+    }
+
+    function deleteFile(filePath) {
+        if (!client || !_loggedIn) return Promise.reject(new Error("Nao conectado"));
+        return client.auth.getUser().then(function (r) {
+            if (r.error) throw r.error;
+            var fullPath = r.data.user.id + "/" + filePath;
+            return client.storage.from(STORAGE_BUCKET).remove([fullPath]);
+        }).then(function (result) {
+            if (result.error) throw result.error;
+            return true;
+        });
+    }
+
+    function getClient() { return client; }
+
     return {
         init: init,
         configure: configure,
@@ -262,6 +305,10 @@ var HubSync = (function () {
         isAutoSyncing: isAutoSyncing,
         lastSync: lastSync,
         clearConfig: clearConfig,
-        getConfig: getConfig
+        getConfig: getConfig,
+        uploadFile: uploadFile,
+        getFileUrl: getFileUrl,
+        deleteFile: deleteFile,
+        getClient: getClient
     };
 })();

@@ -57,6 +57,8 @@ document.addEventListener("DOMContentLoaded", function () {
         renderRefsSalvas();
         renderLeituraHistorico();
         renderCheat();
+        renderChatIA();
+        renderDisciplinas();
     }
 
     HubDB.init().then(function () {
@@ -121,6 +123,8 @@ function mostrarSecao(nome, e) {
     if (nome === "leitura") renderLeituraHistorico();
     if (nome === "cheat") renderCheat();
     if (nome === "sync") renderSyncUI();
+    if (nome === "chatia") renderChatIA();
+    if (nome === "pos") renderDisciplinas();
 }
 
 function mostrarSecaoDirect(nome) {
@@ -468,7 +472,8 @@ var BACKUP_KEYS = [
     "hubias_notas", "hubias_materias", "hubias_links",
     "hubias_flashcards", "hubias_decks", "hubias_planos",
     "hubias_pomodoro", "hubias_cadernos", "hubias_snippets", "hubias_meta_diaria", "hubias_refs", "hubias_leitura",
-    "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python"
+    "hubias_editor_html", "hubias_editor_javascript", "hubias_editor_python",
+    "hubias_pos_disciplinas"
 ];
 
 function exportarDados() {
@@ -511,6 +516,7 @@ function importarDados(event) {
             renderCards("todas"); carregarPrompts(); renderFavoritos(); renderHistorico();
             atualizarSelectsMaterias(); renderNotas(); atualizarFiltroTags(); renderLinks();
             atualizarSelectsDecks(); renderFlashcards(); renderPlanos(); renderPomodoroStats(); renderBackupResumo();
+            renderDisciplinas();
             toast("Backup importado! " + importados + " itens restaurados.");
         } catch (err) { toast("Erro: arquivo invalido!"); }
     };
@@ -2669,6 +2675,7 @@ function importarDB(event) {
             atualizarSelectsMaterias(); renderNotas(); atualizarFiltroTags(); renderLinks();
             atualizarSelectsDecks(); renderFlashcards(); renderPlanos(); renderPomodoroStats();
             renderCadernoSidebar(); renderBackupResumo(); atualizarStorageInfo();
+            renderDisciplinas();
             toast("Banco de dados SQLite importado com sucesso!");
         } else {
             toast("Erro: arquivo de banco de dados invalido!");
@@ -2676,6 +2683,528 @@ function importarDB(event) {
     };
     reader.readAsArrayBuffer(file);
     event.target.value = "";
+}
+
+// ===== CHAT IA (Google Gemini) =====
+var chatiaHistorico = [];
+var chatiaEnviando = false;
+
+function salvarChatiaKey() {
+    var key = document.getElementById("chatiaApiKey").value.trim();
+    if (!key) { toast("Cole uma API Key valida"); return; }
+    localStorage.setItem("hubias_chatia_key", key);
+    toast("API Key salva!");
+    renderChatIA();
+}
+
+function getChatiaKey() {
+    return localStorage.getItem("hubias_chatia_key") || "";
+}
+
+function mostrarChatConfig() {
+    document.getElementById("chatiaConfig").style.display = "block";
+    document.getElementById("chatiaArea").style.display = "none";
+    document.getElementById("chatiaApiKey").value = getChatiaKey();
+}
+
+function renderChatIA() {
+    var key = getChatiaKey();
+    if (key) {
+        document.getElementById("chatiaConfig").style.display = "none";
+        document.getElementById("chatiaArea").style.display = "block";
+        document.getElementById("chatiaKeyStatus").textContent = "Chave configurada";
+    } else {
+        document.getElementById("chatiaConfig").style.display = "block";
+        document.getElementById("chatiaArea").style.display = "none";
+        document.getElementById("chatiaKeyStatus").textContent = "";
+    }
+}
+
+function coletarContextoHub() {
+    var ctx = [];
+    // Notas
+    var notas = JSON.parse(HubDB.getItem("hubias_notas") || "[]");
+    if (notas.length > 0) {
+        ctx.push("=== NOTAS DO USUARIO (" + notas.length + ") ===");
+        notas.slice(0, 20).forEach(function (n) {
+            ctx.push("- " + n.titulo + ": " + n.conteudo.substring(0, 200));
+        });
+    }
+    // Flashcards
+    var fcs = JSON.parse(HubDB.getItem("hubias_flashcards") || "[]");
+    if (fcs.length > 0) {
+        ctx.push("\n=== FLASHCARDS (" + fcs.length + ") ===");
+        fcs.slice(0, 30).forEach(function (f) {
+            ctx.push("- P: " + f.pergunta + " | R: " + f.resposta);
+        });
+    }
+    // Cadernos
+    var cadernos = JSON.parse(HubDB.getItem("hubias_cadernos") || "[]");
+    if (cadernos.length > 0) {
+        ctx.push("\n=== CADERNOS (" + cadernos.length + " materias) ===");
+        cadernos.forEach(function (c) {
+            ctx.push("Materia: " + c.materia);
+            (c.paginas || []).slice(0, 5).forEach(function (p) {
+                ctx.push("  Pagina: " + (p.titulo || "Sem titulo") + " - " + (p.conteudo || "").substring(0, 300));
+            });
+        });
+    }
+    // Disciplinas da pos
+    var disc = JSON.parse(HubDB.getItem("hubias_pos_disciplinas") || "[]");
+    if (disc.length > 0) {
+        ctx.push("\n=== POS-GRADUACAO FMU - DISCIPLINAS (" + disc.length + ") ===");
+        disc.forEach(function (d) {
+            ctx.push("- " + d.nome + " (" + d.status + ")" + (d.professor ? " - Prof: " + d.professor : ""));
+            if (d.notas) ctx.push("  Notas: " + d.notas.substring(0, 300));
+        });
+    }
+    // Links salvos
+    var links = JSON.parse(HubDB.getItem("hubias_links") || "[]");
+    if (links.length > 0) {
+        ctx.push("\n=== LINKS SALVOS (" + links.length + ") ===");
+        links.slice(0, 15).forEach(function (l) {
+            ctx.push("- " + l.titulo + ": " + l.url);
+        });
+    }
+    // Plano de estudos
+    var planos = JSON.parse(HubDB.getItem("hubias_planos") || "[]");
+    if (planos.length > 0) {
+        ctx.push("\n=== PLANO DE ESTUDOS ===");
+        planos.forEach(function (p) {
+            var done = (p.topicos || []).filter(function (t) { return t.feito; }).length;
+            ctx.push("- " + p.materia + " (" + done + "/" + (p.topicos || []).length + " concluidos)");
+        });
+    }
+    return ctx.join("\n");
+}
+
+function enviarChat() {
+    if (chatiaEnviando) return;
+    var input = document.getElementById("chatiaInput");
+    var texto = input.value.trim();
+    if (!texto) return;
+
+    var key = getChatiaKey();
+    if (!key) { toast("Configure a API Key primeiro"); return; }
+
+    // Adicionar mensagem do usuario
+    adicionarMsgChat("user", texto);
+    input.value = "";
+    input.style.height = "auto";
+
+    chatiaEnviando = true;
+    document.getElementById("chatiaSendBtn").textContent = "...";
+
+    // Construir mensagens para API
+    var contents = [];
+    chatiaHistorico.forEach(function (m) {
+        contents.push({ role: m.role === "user" ? "user" : "model", parts: [{ text: m.text }] });
+    });
+    contents.push({ role: "user", parts: [{ text: texto }] });
+
+    // System instruction com contexto
+    var sysPrompt = "Voce e um assistente de estudos integrado ao Hub PRO de IAs. Responda em portugues brasileiro. Seja didatico, claro e objetivo. Use formatacao simples (listas, negrito com **, codigo com ``).";
+
+    if (document.getElementById("chatiaUsarContexto").checked) {
+        var contexto = coletarContextoHub();
+        if (contexto) {
+            sysPrompt += "\n\nAqui estao os dados de estudo do usuario para voce usar como contexto:\n\n" + contexto;
+        }
+    }
+
+    var body = {
+        contents: contents,
+        systemInstruction: { parts: [{ text: sysPrompt }] },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+    };
+
+    // Mostrar indicador de digitacao
+    var typingEl = document.createElement("div");
+    typingEl.className = "chatia-msg chatia-bot";
+    typingEl.id = "chatiaTyping";
+    typingEl.innerHTML = '<div class="chatia-typing">Pensando...</div>';
+    document.getElementById("chatiaMessages").appendChild(typingEl);
+    scrollChat();
+
+    fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + key, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    }).then(function (resp) {
+        if (!resp.ok) {
+            return resp.json().then(function (err) {
+                throw new Error(err.error ? err.error.message : "Erro " + resp.status);
+            });
+        }
+        return resp.json();
+    }).then(function (data) {
+        var typing = document.getElementById("chatiaTyping");
+        if (typing) typing.remove();
+
+        var resposta = "";
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            resposta = data.candidates[0].content.parts.map(function (p) { return p.text || ""; }).join("");
+        } else {
+            resposta = "Sem resposta da IA. Tente novamente.";
+        }
+
+        chatiaHistorico.push({ role: "user", text: texto });
+        chatiaHistorico.push({ role: "model", text: resposta });
+
+        // Limitar historico para nao estourar tokens
+        if (chatiaHistorico.length > 20) {
+            chatiaHistorico = chatiaHistorico.slice(-16);
+        }
+
+        adicionarMsgChat("bot", resposta);
+    }).catch(function (err) {
+        var typing = document.getElementById("chatiaTyping");
+        if (typing) typing.remove();
+        adicionarMsgChat("bot", "Erro: " + err.message);
+    }).finally(function () {
+        chatiaEnviando = false;
+        document.getElementById("chatiaSendBtn").textContent = "Enviar";
+    });
+}
+
+function adicionarMsgChat(tipo, texto) {
+    var container = document.getElementById("chatiaMessages");
+    var div = document.createElement("div");
+    div.className = "chatia-msg " + (tipo === "user" ? "chatia-user" : "chatia-bot");
+
+    var content = document.createElement("div");
+    content.className = "chatia-msg-content";
+
+    if (tipo === "bot") {
+        // Renderizar markdown basico
+        content.innerHTML = renderMarkdownSimples(texto);
+    } else {
+        content.textContent = texto;
+    }
+
+    div.appendChild(content);
+    container.appendChild(div);
+    scrollChat();
+}
+
+function renderMarkdownSimples(text) {
+    // Escape HTML first
+    var h = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // Code blocks
+    h = h.replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    // Inline code
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // Bold
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic
+    h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    // Line breaks
+    h = h.replace(/\n/g, '<br>');
+    return h;
+}
+
+function scrollChat() {
+    var el = document.getElementById("chatiaMessages");
+    setTimeout(function () { el.scrollTop = el.scrollHeight; }, 50);
+}
+
+function limparChat() {
+    chatiaHistorico = [];
+    var container = document.getElementById("chatiaMessages");
+    container.innerHTML = '<div class="chatia-msg chatia-bot"><div class="chatia-msg-content">Chat limpo! Pergunte qualquer coisa sobre seus estudos.</div></div>';
+}
+
+// ===== POS-GRADUACAO FMU =====
+var posDiscSelecionada = null;
+
+function getDisciplinas() {
+    return JSON.parse(HubDB.getItem("hubias_pos_disciplinas") || "[]");
+}
+
+function salvarDisciplinas(disc) {
+    HubDB.setItem("hubias_pos_disciplinas", JSON.stringify(disc));
+}
+
+function salvarDisciplina() {
+    var nome = document.getElementById("posNome").value.trim();
+    if (!nome) { toast("Digite o nome da disciplina"); return; }
+    var professor = document.getElementById("posProfessor").value.trim();
+    var status = document.getElementById("posStatus").value;
+
+    var disc = getDisciplinas();
+    disc.push({
+        id: Date.now().toString(),
+        nome: nome,
+        professor: professor,
+        status: status,
+        notas: "",
+        links: [],
+        pdfs: [],
+        criadoEm: new Date().toISOString()
+    });
+    salvarDisciplinas(disc);
+
+    document.getElementById("posNome").value = "";
+    document.getElementById("posProfessor").value = "";
+    document.getElementById("posStatus").value = "cursando";
+
+    renderDisciplinas();
+    toast("Disciplina adicionada!");
+}
+
+function renderDisciplinas() {
+    var disc = getDisciplinas();
+    var container = document.getElementById("posContainer");
+
+    // Stats
+    var total = disc.length;
+    var concluidas = disc.filter(function (d) { return d.status === "concluida"; }).length;
+    var pct = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+
+    document.getElementById("posStatTotal").textContent = total + " disciplina" + (total !== 1 ? "s" : "");
+    document.getElementById("posStatConcluidas").textContent = concluidas + " concluida" + (concluidas !== 1 ? "s" : "");
+    document.getElementById("posStatProgresso").textContent = pct + "%";
+    document.getElementById("posProgressFill").style.width = pct + "%";
+
+    if (disc.length === 0) {
+        container.innerHTML = '<p class="empty-msg">Nenhuma disciplina adicionada. Adicione as disciplinas da sua pos!</p>';
+        return;
+    }
+
+    var statusIcons = { cursando: "📘", concluida: "✅", pendente: "⏳" };
+    var statusOrder = { cursando: 0, pendente: 1, concluida: 2 };
+
+    // Ordenar: cursando > pendente > concluida
+    var sorted = disc.slice().sort(function (a, b) {
+        return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+    });
+
+    container.innerHTML = "";
+    sorted.forEach(function (d) {
+        var div = document.createElement("div");
+        div.className = "pos-card";
+        div.onclick = function (e) { if (!e.target.closest(".pos-card-actions")) abrirDetalheDisciplina(d.id); };
+        var pdfCount = (d.pdfs || []).length;
+        var pdfInfo = pdfCount > 0 ? " | " + pdfCount + " PDF" + (pdfCount > 1 ? "s" : "") : "";
+        div.innerHTML =
+            '<span class="pos-card-icon">' + (statusIcons[d.status] || "📘") + '</span>' +
+            '<div class="pos-card-info"><h4>' + esc(d.nome) + '</h4><span>' +
+            (d.professor ? 'Prof. ' + esc(d.professor) : 'Sem professor') + pdfInfo + '</span></div>' +
+            '<span class="pos-card-badge pos-badge-' + d.status + '">' + d.status + '</span>' +
+            '<div class="pos-card-actions">' +
+            '<button class="btn-small" onclick="event.stopPropagation();alterarStatusDisciplina(\'' + d.id + '\')" title="Mudar status">↻</button>' +
+            '<button class="btn-small danger" onclick="event.stopPropagation();confirmar(\'Excluir disciplina ' + esc(d.nome).replace(/'/g, "\\'") + '?\', function(){excluirDisciplina(\'' + d.id + '\')})">X</button>' +
+            '</div>';
+        container.appendChild(div);
+    });
+}
+
+function alterarStatusDisciplina(id) {
+    var disc = getDisciplinas();
+    var ciclo = { cursando: "concluida", concluida: "pendente", pendente: "cursando" };
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === id) {
+            disc[i].status = ciclo[disc[i].status] || "cursando";
+            break;
+        }
+    }
+    salvarDisciplinas(disc);
+    renderDisciplinas();
+}
+
+function excluirDisciplina(id) {
+    var disc = getDisciplinas().filter(function (d) { return d.id !== id; });
+    salvarDisciplinas(disc);
+    if (posDiscSelecionada === id) fecharDetalhePos();
+    renderDisciplinas();
+    toast("Disciplina excluida");
+}
+
+function abrirDetalheDisciplina(id) {
+    var disc = getDisciplinas();
+    var d = null;
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === id) { d = disc[i]; break; }
+    }
+    if (!d) return;
+
+    posDiscSelecionada = id;
+    document.getElementById("posContainer").style.display = "none";
+    document.getElementById("posDetalhe").style.display = "block";
+    document.getElementById("posDetalheNome").textContent = d.nome + (d.professor ? " - Prof. " + d.professor : "");
+    document.getElementById("posDetalheNotas").value = d.notas || "";
+
+    renderPdfsDisciplina(d);
+    renderLinksDisciplina(d);
+
+    // Verificar se Supabase esta conectado para PDFs
+    if (!HubSync.isLoggedIn()) {
+        document.getElementById("posPdfInfo").textContent = "Configure o Supabase (aba Sync) para enviar PDFs para a nuvem";
+    } else {
+        document.getElementById("posPdfInfo").textContent = "PDFs salvos no Supabase Storage (1GB gratis)";
+    }
+}
+
+function fecharDetalhePos() {
+    posDiscSelecionada = null;
+    document.getElementById("posDetalhe").style.display = "none";
+    document.getElementById("posContainer").style.display = "block";
+}
+
+function salvarNotasDisciplina() {
+    if (!posDiscSelecionada) return;
+    var disc = getDisciplinas();
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === posDiscSelecionada) {
+            disc[i].notas = document.getElementById("posDetalheNotas").value;
+            break;
+        }
+    }
+    salvarDisciplinas(disc);
+}
+
+// === PDFs da disciplina ===
+function uploadPdfDisciplina(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) { toast("Apenas arquivos PDF"); return; }
+
+    if (!HubSync.isLoggedIn()) {
+        toast("Conecte ao Supabase primeiro (aba Sync)");
+        event.target.value = "";
+        return;
+    }
+
+    var sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    if (file.size > 50 * 1024 * 1024) { toast("PDF muito grande (max 50MB)"); event.target.value = ""; return; }
+
+    toast("Enviando PDF...");
+
+    var filePath = "pos/" + posDiscSelecionada + "/" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+    HubSync.uploadFile(filePath, file).then(function () {
+        // Salvar referencia local
+        var disc = getDisciplinas();
+        for (var i = 0; i < disc.length; i++) {
+            if (disc[i].id === posDiscSelecionada) {
+                if (!disc[i].pdfs) disc[i].pdfs = [];
+                disc[i].pdfs.push({
+                    nome: file.name,
+                    path: filePath,
+                    tamanho: sizeMB + " MB",
+                    data: new Date().toLocaleString("pt-BR")
+                });
+                salvarDisciplinas(disc);
+                renderPdfsDisciplina(disc[i]);
+                break;
+            }
+        }
+        toast("PDF enviado com sucesso!");
+    }).catch(function (err) {
+        toast("Erro ao enviar: " + err.message);
+    });
+
+    event.target.value = "";
+}
+
+function renderPdfsDisciplina(d) {
+    var container = document.getElementById("posPdfLista");
+    var pdfs = d.pdfs || [];
+    if (pdfs.length === 0) {
+        container.innerHTML = '<p class="empty-msg" style="padding:10px;font-size:0.78rem;">Nenhum PDF enviado ainda.</p>';
+        return;
+    }
+    container.innerHTML = "";
+    pdfs.forEach(function (pdf, idx) {
+        var div = document.createElement("div");
+        div.className = "pos-pdf-item";
+        div.innerHTML =
+            '<span>📄 ' + esc(pdf.nome) + '</span>' +
+            '<span class="pos-pdf-size">' + esc(pdf.tamanho) + ' | ' + esc(pdf.data) + '</span>' +
+            '<button class="btn-small" onclick="abrirPdfDisciplina(\'' + esc(pdf.path) + '\')">Abrir</button>' +
+            '<button class="btn-small danger" onclick="removerPdfDisciplina(' + idx + ')">X</button>';
+        container.appendChild(div);
+    });
+}
+
+function abrirPdfDisciplina(path) {
+    if (!HubSync.isLoggedIn()) { toast("Conecte ao Supabase para acessar PDFs"); return; }
+    HubSync.getFileUrl(path).then(function (url) {
+        window.open(url, "_blank");
+    }).catch(function (err) {
+        toast("Erro ao abrir: " + err.message);
+    });
+}
+
+function removerPdfDisciplina(idx) {
+    if (!posDiscSelecionada) return;
+    var disc = getDisciplinas();
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === posDiscSelecionada) {
+            var pdf = disc[i].pdfs[idx];
+            if (pdf && HubSync.isLoggedIn()) {
+                HubSync.deleteFile(pdf.path).catch(function () {});
+            }
+            disc[i].pdfs.splice(idx, 1);
+            salvarDisciplinas(disc);
+            renderPdfsDisciplina(disc[i]);
+            break;
+        }
+    }
+    toast("PDF removido");
+}
+
+// === Links da disciplina ===
+function adicionarLinkDisciplina() {
+    if (!posDiscSelecionada) return;
+    var url = document.getElementById("posLinkUrl").value.trim();
+    var titulo = document.getElementById("posLinkTitulo").value.trim() || url;
+    if (!url) { toast("Digite uma URL"); return; }
+
+    var disc = getDisciplinas();
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === posDiscSelecionada) {
+            if (!disc[i].links) disc[i].links = [];
+            disc[i].links.push({ url: url, titulo: titulo });
+            salvarDisciplinas(disc);
+            renderLinksDisciplina(disc[i]);
+            break;
+        }
+    }
+    document.getElementById("posLinkUrl").value = "";
+    document.getElementById("posLinkTitulo").value = "";
+    toast("Link adicionado!");
+}
+
+function renderLinksDisciplina(d) {
+    var container = document.getElementById("posLinksLista");
+    var links = d.links || [];
+    if (links.length === 0) {
+        container.innerHTML = '<p class="empty-msg" style="padding:10px;font-size:0.78rem;">Nenhum link adicionado.</p>';
+        return;
+    }
+    container.innerHTML = "";
+    links.forEach(function (l, idx) {
+        var div = document.createElement("div");
+        div.className = "pos-link-item";
+        div.innerHTML =
+            '<a href="' + esc(l.url) + '" target="_blank">' + esc(l.titulo) + '</a>' +
+            '<button class="btn-small danger" onclick="removerLinkDisciplina(' + idx + ')">X</button>';
+        container.appendChild(div);
+    });
+}
+
+function removerLinkDisciplina(idx) {
+    if (!posDiscSelecionada) return;
+    var disc = getDisciplinas();
+    for (var i = 0; i < disc.length; i++) {
+        if (disc[i].id === posDiscSelecionada) {
+            disc[i].links.splice(idx, 1);
+            salvarDisciplinas(disc);
+            renderLinksDisciplina(disc[i]);
+            break;
+        }
+    }
 }
 
 // ===== SERVICE WORKER =====

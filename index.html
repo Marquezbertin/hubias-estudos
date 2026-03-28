@@ -61,6 +61,9 @@
             <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
             <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
             <button class="nav-btn" onclick="mostrarSecao('sync', event)">Sync</button>
+            <span class="nav-sep"></span>
+            <button class="nav-btn" onclick="mostrarSecao('chatia', event)">Chat IA</button>
+            <button class="nav-btn" onclick="mostrarSecao('pos', event)">Pos</button>
         </nav>
     </header>
 
@@ -647,6 +650,7 @@
                     <button class="btn-secondary" onclick="exportarSecao('prompts')">Prompts</button>
                     <button class="btn-secondary" onclick="exportarSecao('snippets')">Snippets</button>
                     <button class="btn-secondary" onclick="exportarSecao('refs')">Referencias</button>
+                    <button class="btn-secondary" onclick="exportarSecao('pos_disciplinas')">Pos-Grad</button>
                 </div>
             </div>
             <div class="backup-card">
@@ -748,6 +752,120 @@ CREATE POLICY "Users manage own data" ON hubias_sync
         <!-- Reset -->
         <div id="syncResetArea" style="margin-top:15px;text-align:center;display:none;">
             <button class="btn-small danger" onclick="confirmar('Desconectar e limpar configuracao de sync?', resetSync)">Resetar Configuracao</button>
+        </div>
+    </section>
+
+    <!-- SECAO: CHAT IA (Gemini) -->
+    <section id="secao-chatia" class="secao">
+        <h2 class="secao-titulo">Chat IA - Assistente de Estudos</h2>
+
+        <!-- Config API Key -->
+        <div id="chatiaConfig" class="backup-card" style="max-width:600px;margin:0 auto 20px;">
+            <h3>Configurar Google Gemini (Gratuito)</h3>
+            <details style="background:#0f172a;border-radius:8px;padding:12px;margin:10px 0;">
+                <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como obter a API Key (30 segundos)</summary>
+                <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
+                    <li>Acesse <strong>aistudio.google.com/apikey</strong></li>
+                    <li>Faca login com sua conta Google</li>
+                    <li>Clique em <strong>"Create API Key"</strong></li>
+                    <li>Copie a chave e cole no campo abaixo</li>
+                    <li>Pronto! 15 requisicoes/min gratis com Gemini Flash</li>
+                </ol>
+            </details>
+            <label>API Key</label>
+            <input type="password" id="chatiaApiKey" placeholder="Cole sua API Key do Google AI Studio aqui...">
+            <button class="btn-primary" onclick="salvarChatiaKey()" style="margin-top:10px;">Salvar e Conectar</button>
+            <p id="chatiaKeyStatus" style="font-size:0.75rem;color:#64748b;margin-top:8px;"></p>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chatiaArea" style="display:none;">
+            <div class="chatia-toolbar">
+                <span class="chatia-status" id="chatiaStatus">Gemini Flash conectado</span>
+                <label class="chatia-ctx-toggle"><input type="checkbox" id="chatiaUsarContexto" checked> Usar contexto do Hub</label>
+                <button class="btn-small" onclick="limparChat()">Limpar Chat</button>
+                <button class="btn-small" onclick="mostrarChatConfig()">Trocar Key</button>
+            </div>
+            <div id="chatiaMessages" class="chatia-messages">
+                <div class="chatia-msg chatia-bot">
+                    <div class="chatia-msg-content">Ola! Sou seu assistente de estudos. Tenho acesso as suas notas, flashcards, cadernos e disciplinas da pos. Pergunte qualquer coisa!</div>
+                </div>
+            </div>
+            <div class="chatia-input-area">
+                <textarea id="chatiaInput" class="chatia-input" placeholder="Pergunte algo sobre seus estudos... (Enter para enviar, Shift+Enter para nova linha)" rows="2"></textarea>
+                <button class="btn-primary chatia-send" id="chatiaSendBtn" onclick="enviarChat()">Enviar</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SECAO: POS-GRADUACAO FMU -->
+    <section id="secao-pos" class="secao">
+        <h2 class="secao-titulo">Pos-Graduacao FMU</h2>
+        <div class="pos-topo">
+            <a href="https://levelup.fmu.br/disciplinas" target="_blank" class="btn-secondary pos-link-fmu">Abrir LevelUp FMU</a>
+            <div class="pos-stats-mini">
+                <span id="posStatTotal">0 disciplinas</span>
+                <span id="posStatConcluidas">0 concluidas</span>
+                <span id="posStatProgresso">0%</span>
+            </div>
+        </div>
+
+        <!-- Barra de progresso geral -->
+        <div class="pos-progress-bar">
+            <div class="pos-progress-fill" id="posProgressFill" style="width:0%"></div>
+        </div>
+
+        <!-- Formulario -->
+        <div class="pos-form">
+            <div class="pos-form-row">
+                <input type="text" id="posNome" placeholder="Nome da disciplina" onkeydown="if(event.key==='Enter')salvarDisciplina()">
+                <input type="text" id="posProfessor" placeholder="Professor (opcional)">
+                <select id="posStatus">
+                    <option value="cursando">Cursando</option>
+                    <option value="concluida">Concluida</option>
+                    <option value="pendente">Pendente</option>
+                </select>
+                <button class="btn-primary" onclick="salvarDisciplina()" style="min-width:120px;">Adicionar</button>
+            </div>
+        </div>
+
+        <!-- Lista de disciplinas -->
+        <div id="posContainer"></div>
+
+        <!-- Detalhe da disciplina (expandido) -->
+        <div id="posDetalhe" class="pos-detalhe" style="display:none;">
+            <div class="pos-detalhe-header">
+                <h3 id="posDetalheNome"></h3>
+                <button class="btn-small" onclick="fecharDetalhePos()">Voltar</button>
+            </div>
+
+            <!-- Anotacoes da disciplina -->
+            <div class="pos-detalhe-secao">
+                <h4>Anotacoes</h4>
+                <textarea id="posDetalheNotas" placeholder="Suas anotacoes sobre esta disciplina..." rows="6" oninput="salvarNotasDisciplina()"></textarea>
+            </div>
+
+            <!-- Upload de PDFs -->
+            <div class="pos-detalhe-secao">
+                <h4>Materiais (PDFs)</h4>
+                <div class="pos-pdf-upload">
+                    <input type="file" id="posPdfInput" accept=".pdf" style="display:none;" onchange="uploadPdfDisciplina(event)">
+                    <button class="btn-secondary" onclick="document.getElementById('posPdfInput').click()">Enviar PDF</button>
+                    <span class="pos-pdf-info" id="posPdfInfo">Os PDFs ficam salvos no Supabase Storage</span>
+                </div>
+                <div id="posPdfLista" class="pos-pdf-lista"></div>
+            </div>
+
+            <!-- Links uteis -->
+            <div class="pos-detalhe-secao">
+                <h4>Links Uteis</h4>
+                <div class="pos-links-form">
+                    <input type="text" id="posLinkUrl" placeholder="URL">
+                    <input type="text" id="posLinkTitulo" placeholder="Titulo">
+                    <button class="btn-secondary" onclick="adicionarLinkDisciplina()">+</button>
+                </div>
+                <div id="posLinksLista"></div>
+            </div>
         </div>
     </section>
 

@@ -86,18 +86,13 @@ header {
 /* ===== NAVEGACAO ===== */
 nav {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
     gap: 6px;
-    overflow-x: auto;
+    flex-wrap: wrap;
     padding-bottom: 4px;
-    scrollbar-width: thin;
-    scrollbar-color: #334155 transparent;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
 }
-
-nav::-webkit-scrollbar { height: 4px; }
-nav::-webkit-scrollbar-track { background: transparent; }
-nav::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 
 .nav-group {
     position: relative;

@@ -760,29 +760,53 @@ CREATE POLICY "Users manage own data" ON hubias_sync
         <h2 class="secao-titulo">Chat IA - Assistente de Estudos</h2>
 
         <!-- Config API Key -->
-        <div id="chatiaConfig" class="backup-card" style="max-width:600px;margin:0 auto 20px;">
-            <h3>Configurar Chat IA (Gratuito via OpenRouter)</h3>
-            <details style="background:#0f172a;border-radius:8px;padding:12px;margin:10px 0;">
-                <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como obter a API Key gratis (1 minuto)</summary>
-                <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
-                    <li>Acesse <strong>openrouter.ai</strong></li>
-                    <li>Clique em <strong>"Sign In"</strong> (pode usar conta Google)</li>
-                    <li>Va em <strong>"Keys"</strong> no menu (ou openrouter.ai/keys)</li>
-                    <li>Clique <strong>"Create Key"</strong></li>
-                    <li>Copie a chave (comeca com <code>sk-or-</code>) e cole abaixo</li>
-                    <li>Pronto! Modelos gratuitos, sem cartao de credito</li>
-                </ol>
-            </details>
-            <label>API Key do OpenRouter</label>
-            <input type="password" id="chatiaApiKey" placeholder="sk-or-v1-...">
-            <label style="margin-top:10px;">Modelo (todos gratuitos)</label>
-            <select id="chatiaModelo">
-                <option value="nvidia/nemotron-3-super-120b-a12b:free">NVIDIA Nemotron Super 120B (recomendado)</option>
-                <option value="minimax/minimax-m2.5:free">MiniMax M2.5</option>
-                <option value="stepfun/step-3.5-flash:free">StepFun 3.5 Flash</option>
-                <option value="nvidia/nemotron-3-nano-30b-a3b:free">NVIDIA Nemotron Nano 30B</option>
-                <option value="openrouter/free">Auto (melhor modelo free disponivel)</option>
+        <div id="chatiaConfig" class="backup-card" style="max-width:650px;margin:0 auto 20px;">
+            <h3>Configurar Chat IA (100% Gratuito)</h3>
+
+            <!-- Escolha do provedor -->
+            <label style="margin-top:5px;">Provedor</label>
+            <select id="chatiaProvedor" onchange="atualizarGuiaProvedor()">
+                <option value="openrouter">OpenRouter (varios modelos gratuitos)</option>
+                <option value="groq">Groq (respostas ultra-rapidas)</option>
             </select>
+
+            <!-- Guia OpenRouter -->
+            <div id="guiaOpenRouter">
+                <details style="background:#0f172a;border-radius:8px;padding:12px;margin:10px 0;" open>
+                    <summary style="cursor:pointer;color:#a78bfa;font-weight:600;font-size:0.85rem;">Como configurar OpenRouter (1 minuto)</summary>
+                    <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
+                        <li>Acesse <strong>openrouter.ai</strong></li>
+                        <li>Clique em <strong>"Sign In"</strong> (pode usar conta Google)</li>
+                        <li>Va em <strong>"Keys"</strong> no menu (ou openrouter.ai/keys)</li>
+                        <li>Clique <strong>"Create Key"</strong></li>
+                        <li>Copie a chave (comeca com <code>sk-or-</code>) e cole abaixo</li>
+                        <li>Pronto! Modelos gratuitos, sem cartao de credito</li>
+                    </ol>
+                </details>
+            </div>
+
+            <!-- Guia Groq -->
+            <div id="guiaGroq" style="display:none;">
+                <details style="background:#0f172a;border-radius:8px;padding:12px;margin:10px 0;" open>
+                    <summary style="cursor:pointer;color:#f59e0b;font-weight:600;font-size:0.85rem;">Como configurar Groq (1 minuto)</summary>
+                    <ol style="margin:10px 0 0 0;padding-left:20px;font-size:0.82rem;color:#cbd5e1;line-height:1.8;">
+                        <li>Acesse <strong>console.groq.com</strong></li>
+                        <li>Crie uma conta (pode usar conta Google)</li>
+                        <li>Va em <strong>"API Keys"</strong> no menu lateral</li>
+                        <li>Clique <strong>"Create API Key"</strong></li>
+                        <li>Copie a chave (comeca com <code>gsk_</code>) e cole abaixo</li>
+                        <li>Pronto! Groq e gratis com limites generosos (30 req/min)</li>
+                    </ol>
+                    <p style="margin-top:10px;font-size:0.78rem;color:#94a3b8;">Groq e o provedor mais rapido - respostas quase instantaneas. Ideal para flashcards, resumos e perguntas rapidas.</p>
+                </details>
+            </div>
+
+            <label>API Key</label>
+            <input type="password" id="chatiaApiKey" placeholder="sk-or-v1-... ou gsk_...">
+
+            <label style="margin-top:10px;">Modelo (todos gratuitos)</label>
+            <select id="chatiaModelo"></select>
+
             <button class="btn-primary" onclick="salvarChatiaKey()" style="margin-top:10px;">Salvar e Conectar</button>
             <p id="chatiaKeyStatus" style="font-size:0.75rem;color:#64748b;margin-top:8px;"></p>
         </div>

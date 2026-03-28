@@ -2685,17 +2685,85 @@ function importarDB(event) {
     event.target.value = "";
 }
 
-// ===== CHAT IA (Google Gemini) =====
+// ===== CHAT IA (OpenRouter / Groq) =====
 var chatiaHistorico = [];
 var chatiaEnviando = false;
+
+var CHATIA_PROVEDORES = {
+    openrouter: {
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        modelos: [
+            { id: "nvidia/nemotron-3-super-120b-a12b:free", nome: "NVIDIA Nemotron Super 120B (recomendado)" },
+            { id: "minimax/minimax-m2.5:free", nome: "MiniMax M2.5" },
+            { id: "stepfun/step-3.5-flash:free", nome: "StepFun 3.5 Flash" },
+            { id: "nvidia/nemotron-3-nano-30b-a3b:free", nome: "NVIDIA Nemotron Nano 30B" },
+            { id: "openrouter/free", nome: "Auto (melhor modelo free disponivel)" }
+        ],
+        headers: function (key) {
+            return {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + key,
+                "HTTP-Referer": window.location.href,
+                "X-Title": "Hub PRO de IAs - Estudos"
+            };
+        }
+    },
+    groq: {
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        modelos: [
+            { id: "llama-3.3-70b-versatile", nome: "Llama 3.3 70B (recomendado - rapido e preciso)" },
+            { id: "llama-3.1-8b-instant", nome: "Llama 3.1 8B Instant (ultra-rapido)" },
+            { id: "gemma2-9b-it", nome: "Gemma 2 9B (Google, compacto)" },
+            { id: "mixtral-8x7b-32768", nome: "Mixtral 8x7B (contexto grande)" }
+        ],
+        headers: function (key) {
+            return {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + key
+            };
+        }
+    }
+};
+
+function getChatiaProvedor() {
+    return localStorage.getItem("hubias_chatia_provedor") || "openrouter";
+}
+
+function atualizarGuiaProvedor() {
+    var prov = document.getElementById("chatiaProvedor").value;
+    document.getElementById("guiaOpenRouter").style.display = prov === "openrouter" ? "block" : "none";
+    document.getElementById("guiaGroq").style.display = prov === "groq" ? "block" : "none";
+    document.getElementById("chatiaApiKey").placeholder = prov === "groq" ? "gsk_..." : "sk-or-v1-...";
+    // Atualizar modelos
+    atualizarSelectModelos(prov);
+}
+
+function atualizarSelectModelos(prov) {
+    var sel = document.getElementById("chatiaModelo");
+    var info = CHATIA_PROVEDORES[prov];
+    if (!info) return;
+    sel.innerHTML = "";
+    info.modelos.forEach(function (m) {
+        var opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.nome;
+        sel.appendChild(opt);
+    });
+    // Restaurar modelo salvo se mesmo provedor
+    var savedProv = getChatiaProvedor();
+    var savedModelo = localStorage.getItem("hubias_chatia_modelo") || "";
+    if (prov === savedProv && savedModelo) sel.value = savedModelo;
+}
 
 function salvarChatiaKey() {
     var key = document.getElementById("chatiaApiKey").value.trim();
     if (!key) { toast("Cole uma API Key valida"); return; }
-    localStorage.setItem("hubias_chatia_key", key);
+    var provedor = document.getElementById("chatiaProvedor").value;
     var modelo = document.getElementById("chatiaModelo").value;
+    localStorage.setItem("hubias_chatia_key", key);
+    localStorage.setItem("hubias_chatia_provedor", provedor);
     localStorage.setItem("hubias_chatia_modelo", modelo);
-    toast("API Key salva! Modelo: " + modelo);
+    toast("Conectado! Provedor: " + provedor + " | Modelo: " + modelo.split("/").pop());
     renderChatIA();
 }
 
@@ -2711,24 +2779,31 @@ function mostrarChatConfig() {
     document.getElementById("chatiaConfig").style.display = "block";
     document.getElementById("chatiaArea").style.display = "none";
     document.getElementById("chatiaApiKey").value = getChatiaKey();
+    var prov = getChatiaProvedor();
+    document.getElementById("chatiaProvedor").value = prov;
+    atualizarGuiaProvedor();
 }
 
 function renderChatIA() {
     var key = getChatiaKey();
     var modelo = getChatiaModelo();
+    var provedor = getChatiaProvedor();
+    // Inicializar select de modelos
+    atualizarSelectModelos(provedor);
+    document.getElementById("chatiaProvedor").value = provedor;
+    atualizarGuiaProvedor();
+
     if (key) {
         document.getElementById("chatiaConfig").style.display = "none";
         document.getElementById("chatiaArea").style.display = "block";
         document.getElementById("chatiaKeyStatus").textContent = "Chave configurada";
-        document.getElementById("chatiaStatus").textContent = modelo + " conectado";
+        var nomeModelo = modelo.split("/").pop().replace(":free", "");
+        document.getElementById("chatiaStatus").textContent = provedor + " | " + nomeModelo + " conectado";
     } else {
         document.getElementById("chatiaConfig").style.display = "block";
         document.getElementById("chatiaArea").style.display = "none";
         document.getElementById("chatiaKeyStatus").textContent = "";
     }
-    // Manter select sincronizado
-    var sel = document.getElementById("chatiaModelo");
-    if (sel) sel.value = modelo;
 }
 
 function coletarContextoHub() {
@@ -2830,6 +2905,9 @@ function enviarChat() {
     messages.push({ role: "user", content: texto });
 
     var modelo = getChatiaModelo();
+    var provedor = getChatiaProvedor();
+    var provInfo = CHATIA_PROVEDORES[provedor];
+    if (!provInfo) { toast("Provedor invalido"); return; }
 
     var body = {
         model: modelo,
@@ -2846,14 +2924,9 @@ function enviarChat() {
     document.getElementById("chatiaMessages").appendChild(typingEl);
     scrollChat();
 
-    fetch("https://openrouter.ai/api/v1/chat/completions", {
+    fetch(provInfo.url, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + key,
-            "HTTP-Referer": window.location.href,
-            "X-Title": "Hub PRO de IAs - Estudos"
-        },
+        headers: provInfo.headers(key),
         body: JSON.stringify(body)
     }).then(function (resp) {
         if (!resp.ok) {

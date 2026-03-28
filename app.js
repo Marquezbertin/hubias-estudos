@@ -1621,7 +1621,7 @@ function iniciarPomodoro() {
             clearInterval(pomodoroInterval);
             pomodoroRodando = false;
             document.getElementById("btnPomodoro").textContent = "Iniciar";
-            document.title = "Hub PRO de IAs - Estudos";
+            document.title = "Hub PRO de Estudos";
             playSound();
             if (pomodoroModo === "foco") {
                 registrarSessaoPomodoro();
@@ -1639,14 +1639,14 @@ function pausarPomodoro() {
     clearInterval(pomodoroInterval);
     pomodoroRodando = false;
     document.getElementById("btnPomodoro").textContent = "Continuar";
-    document.title = "Hub PRO de IAs - Estudos";
+    document.title = "Hub PRO de Estudos";
 }
 
 function resetPomodoro() {
     clearInterval(pomodoroInterval);
     pomodoroRodando = false;
     document.getElementById("btnPomodoro").textContent = "Iniciar";
-    document.title = "Hub PRO de IAs - Estudos";
+    document.title = "Hub PRO de Estudos";
     var tempos = { foco: 25, curta: 5, longa: 15 };
     pomodoroSegundos = tempos[pomodoroModo] * 60;
     pomodoroTotal = pomodoroSegundos;
@@ -2796,7 +2796,7 @@ var CHATIA_PROVEDORES = {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + key,
                 "HTTP-Referer": window.location.href,
-                "X-Title": "Hub PRO de IAs - Estudos"
+                "X-Title": "Hub PRO de Estudos"
             };
         }
     },
@@ -2977,7 +2977,7 @@ function enviarChat() {
     var messages = [];
 
     // System prompt
-    var sysPrompt = "Voce e um assistente de estudos integrado ao Hub PRO de IAs. Responda em portugues brasileiro. Seja didatico, claro e objetivo. Use formatacao simples (listas, negrito com **, codigo com ``).";
+    var sysPrompt = "Voce e um assistente de estudos integrado ao Hub PRO de Estudos. Responda em portugues brasileiro. Seja didatico, claro e objetivo. Use formatacao simples (listas, negrito com **, codigo com ``).";
 
     if (document.getElementById("chatiaUsarContexto").checked) {
         var contexto = coletarContextoHub();

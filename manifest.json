@@ -1,6 +1,6 @@
 {
-    "name": "Hub PRO de IAs - Estudos",
-    "short_name": "Hub IAs",
+    "name": "Hub PRO de Estudos",
+    "short_name": "Hub Estudos",
     "description": "Centro de estudos com inteligencia artificial para pos-graduacao",
     "start_url": "./index.html",
     "display": "standalone",

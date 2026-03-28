@@ -1,4 +1,4 @@
-var CACHE_NAME = 'hubias-v5';
+var CACHE_NAME = 'hubias-v6';
 var ASSETS = [
     './',
     './index.html',

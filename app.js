@@ -27,38 +27,21 @@ var IAS = [
 ];
 
 // ===== INICIALIZACAO =====
+var _secaoIniciada = {};
+
 document.addEventListener("DOMContentLoaded", function () {
     var loadingEl = document.getElementById("dbLoading");
 
     function iniciarApp() {
         if (loadingEl) loadingEl.style.display = "none";
+
+        // === Essenciais: secao padrao + utilitarios globais ===
         renderCards("todas");
-        carregarPrompts();
-        renderFavoritos();
-        renderHistorico();
-        renderTemplates();
-        renderPlanos();
-        atualizarSelectsDecks();
-        renderFlashcards();
-        atualizarFiltroTags();
-        renderLinks();
-        atualizarSelectsMaterias();
-        renderNotas();
-        atualizarDisplayPomodoro();
-        renderPomodoroStats();
+        _secaoIniciada["ias"] = true;
         autoBackupCheck();
         registerSW();
-        renderMetaDiaria();
-        initEditor();
-        renderCadernoSidebar();
         iniciarAutoBackup();
         atualizarStorageInfo();
-        atualizarFormRef();
-        renderRefsSalvas();
-        renderLeituraHistorico();
-        renderCheat();
-        renderChatIA();
-        renderDisciplinas();
     }
 
     HubDB.init().then(function () {
@@ -91,6 +74,50 @@ function fecharConfirm(aceito) {
 }
 
 // ===== NAVEGACAO =====
+
+// Nav groups: toggle dropdown
+function toggleNavGroup(btn) {
+    var group = btn.parentElement;
+    var wasOpen = group.classList.contains("open");
+    // Fechar todos
+    document.querySelectorAll(".nav-group.open").forEach(function (g) { g.classList.remove("open"); });
+    // Abrir se estava fechado
+    if (!wasOpen) group.classList.add("open");
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener("click", function (e) {
+    if (!e.target.closest(".nav-group")) {
+        document.querySelectorAll(".nav-group.open").forEach(function (g) { g.classList.remove("open"); });
+    }
+});
+
+function _initSecao(nome) {
+    if (_secaoIniciada[nome]) return;
+    _secaoIniciada[nome] = true;
+    switch (nome) {
+        case "prompts": carregarPrompts(); break;
+        case "templates": renderTemplates(); break;
+        case "flashcards": atualizarSelectsDecks(); renderFlashcards(); break;
+        case "plano": renderPlanos(); break;
+        case "pomodoro": atualizarDisplayPomodoro(); renderPomodoroStats(); renderMetaDiaria(); break;
+        case "caderno": renderCadernoSidebar(); break;
+        case "notas": atualizarSelectsMaterias(); renderNotas(); break;
+        case "links": atualizarFiltroTags(); renderLinks(); break;
+        case "favoritos": renderFavoritos(); break;
+        case "historico": renderHistorico(); break;
+        case "stats": renderStats(); break;
+        case "editor": initEditor(); break;
+        case "refs": atualizarFormRef(); renderRefsSalvas(); break;
+        case "leitura": renderLeituraHistorico(); break;
+        case "cheat": renderCheat(); break;
+        case "backup": renderBackupResumo(); break;
+        case "sync": renderSyncUI(); break;
+        case "chatia": renderChatIA(); break;
+        case "pos": renderDisciplinas(); break;
+    }
+}
+
 function mostrarSecao(nome, e) {
     document.querySelectorAll(".secao").forEach(function (s) { s.classList.remove("ativa"); });
 
@@ -98,7 +125,31 @@ function mostrarSecao(nome, e) {
     if (secao) secao.classList.add("ativa");
 
     document.querySelectorAll(".nav-btn").forEach(function (btn) { btn.classList.remove("active"); });
-    if (e && e.target) e.target.classList.add("active");
+    document.querySelectorAll(".nav-group-btn").forEach(function (btn) { btn.classList.remove("group-active"); });
+
+    if (e && e.target) {
+        e.target.classList.add("active");
+    } else {
+        // Ativado via atalho (sem event): encontrar botao pelo onclick
+        document.querySelectorAll(".nav-btn").forEach(function (btn) {
+            var onclick = btn.getAttribute("onclick") || "";
+            if (onclick.indexOf("'" + nome + "'") !== -1) btn.classList.add("active");
+        });
+    }
+
+    // Destacar grupo que contem a secao ativa
+    document.querySelectorAll(".nav-group").forEach(function (g) {
+        var btns = g.querySelectorAll(".nav-btn");
+        for (var i = 0; i < btns.length; i++) {
+            if (btns[i].classList.contains("active")) {
+                g.querySelector(".nav-group-btn").classList.add("group-active");
+                break;
+            }
+        }
+    });
+
+    // Fechar dropdowns
+    document.querySelectorAll(".nav-group.open").forEach(function (g) { g.classList.remove("open"); });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -107,11 +158,15 @@ function mostrarSecao(nome, e) {
         document.getElementById("buscaGlobal").value = "";
     }
 
+    // Lazy init: inicializa a secao na primeira visita
+    _initSecao(nome);
+
+    // Re-renders para secoes que precisam atualizar a cada visita
     if (nome === "favoritos") renderFavoritos();
     if (nome === "historico") renderHistorico();
     if (nome === "stats") renderStats();
     if (nome === "backup") renderBackupResumo();
-    if (nome === "templates") { renderTemplates(); fecharTemplate(); }
+    if (nome === "templates") fecharTemplate();
     if (nome === "plano") renderPlanos();
     if (nome === "flashcards") { atualizarSelectsDecks(); renderFlashcards(); }
     if (nome === "links") { atualizarFiltroTags(); renderLinks(); }
@@ -2448,12 +2503,25 @@ function togglePinNota(id) {
 }
 
 // ===== KEYBOARD SHORTCUTS =====
+var _atalhoSecoes = ["ias", "chatia", "pos", "caderno", "flashcards", "pomodoro", "notas", "plano", "links"];
+
 document.addEventListener("keydown", function (e) {
     // Ctrl+K: focus na busca global
     if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
         document.getElementById("buscaGlobal").focus();
         mostrarSecaoDirect("busca");
+        return;
+    }
+
+    // Ctrl+1 a Ctrl+9: atalhos para secoes
+    if ((e.ctrlKey || e.metaKey) && e.key >= "1" && e.key <= "9") {
+        var idx = parseInt(e.key) - 1;
+        if (idx < _atalhoSecoes.length) {
+            e.preventDefault();
+            mostrarSecao(_atalhoSecoes[idx]);
+        }
+        return;
     }
 
     // Esc: fechar dialog

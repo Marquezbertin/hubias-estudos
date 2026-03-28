@@ -39,31 +39,51 @@
         </div>
         <nav id="mainNav">
             <button class="nav-btn active" onclick="mostrarSecao('ias', event)">IAs</button>
-            <button class="nav-btn" onclick="mostrarSecao('prompts', event)">Prompts</button>
-            <button class="nav-btn" onclick="mostrarSecao('templates', event)">Templates</button>
-            <span class="nav-sep"></span>
-            <button class="nav-btn" onclick="mostrarSecao('flashcards', event)">Flashcards</button>
-            <button class="nav-btn" onclick="mostrarSecao('plano', event)">Plano</button>
-            <button class="nav-btn" onclick="mostrarSecao('pomodoro', event)">Pomodoro</button>
-            <span class="nav-sep"></span>
-            <button class="nav-btn" onclick="mostrarSecao('caderno', event)">Caderno</button>
-            <button class="nav-btn" onclick="mostrarSecao('notas', event)">Notas</button>
-            <button class="nav-btn" onclick="mostrarSecao('links', event)">Links</button>
-            <button class="nav-btn" onclick="mostrarSecao('favoritos', event)">Favoritos</button>
-            <button class="nav-btn" onclick="mostrarSecao('historico', event)">Historico</button>
-            <span class="nav-sep"></span>
-            <button class="nav-btn" onclick="mostrarSecao('stats', event)">Stats</button>
-            <button class="nav-btn" onclick="mostrarSecao('editor', event)">Editor</button>
-            <button class="nav-btn" onclick="mostrarSecao('calc', event)">Calc</button>
-            <button class="nav-btn" onclick="mostrarSecao('refs', event)">ABNT</button>
-            <button class="nav-btn" onclick="mostrarSecao('leitura', event)">Leitura</button>
-            <button class="nav-btn" onclick="mostrarSecao('cheat', event)">Cheat</button>
-            <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
-            <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
-            <button class="nav-btn" onclick="mostrarSecao('sync', event)">Sync</button>
-            <span class="nav-sep"></span>
             <button class="nav-btn" onclick="mostrarSecao('chatia', event)">Chat IA</button>
             <button class="nav-btn" onclick="mostrarSecao('pos', event)">Pos</button>
+
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">Estudo <span class="nav-arrow">&#9662;</span></button>
+                <div class="nav-group-items">
+                    <button class="nav-btn" onclick="mostrarSecao('flashcards', event)">Flashcards</button>
+                    <button class="nav-btn" onclick="mostrarSecao('plano', event)">Plano</button>
+                    <button class="nav-btn" onclick="mostrarSecao('pomodoro', event)">Pomodoro</button>
+                    <button class="nav-btn" onclick="mostrarSecao('leitura', event)">Leitura</button>
+                </div>
+            </div>
+
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">Conteudo <span class="nav-arrow">&#9662;</span></button>
+                <div class="nav-group-items">
+                    <button class="nav-btn" onclick="mostrarSecao('caderno', event)">Caderno</button>
+                    <button class="nav-btn" onclick="mostrarSecao('notas', event)">Notas</button>
+                    <button class="nav-btn" onclick="mostrarSecao('links', event)">Links</button>
+                    <button class="nav-btn" onclick="mostrarSecao('prompts', event)">Prompts</button>
+                    <button class="nav-btn" onclick="mostrarSecao('templates', event)">Templates</button>
+                </div>
+            </div>
+
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">Ferramentas <span class="nav-arrow">&#9662;</span></button>
+                <div class="nav-group-items">
+                    <button class="nav-btn" onclick="mostrarSecao('editor', event)">Editor</button>
+                    <button class="nav-btn" onclick="mostrarSecao('calc', event)">Calc</button>
+                    <button class="nav-btn" onclick="mostrarSecao('refs', event)">ABNT</button>
+                    <button class="nav-btn" onclick="mostrarSecao('cheat', event)">Cheat</button>
+                    <button class="nav-btn" onclick="mostrarSecao('dicas', event)">Dicas</button>
+                </div>
+            </div>
+
+            <div class="nav-group">
+                <button class="nav-group-btn" onclick="toggleNavGroup(this)">Dados <span class="nav-arrow">&#9662;</span></button>
+                <div class="nav-group-items">
+                    <button class="nav-btn" onclick="mostrarSecao('stats', event)">Stats</button>
+                    <button class="nav-btn" onclick="mostrarSecao('favoritos', event)">Favoritos</button>
+                    <button class="nav-btn" onclick="mostrarSecao('historico', event)">Historico</button>
+                    <button class="nav-btn" onclick="mostrarSecao('backup', event)">Backup</button>
+                    <button class="nav-btn" onclick="mostrarSecao('sync', event)">Sync</button>
+                </div>
+            </div>
         </nav>
     </header>
 
@@ -600,6 +620,9 @@
                 <h3>Atalhos do Hub</h3>
                 <ul>
                     <li><strong>Ctrl+K</strong> - Busca global rapida</li>
+                    <li><strong>Ctrl+1</strong> - IAs | <strong>Ctrl+2</strong> - Chat IA | <strong>Ctrl+3</strong> - Pos</li>
+                    <li><strong>Ctrl+4</strong> - Caderno | <strong>Ctrl+5</strong> - Flashcards | <strong>Ctrl+6</strong> - Pomodoro</li>
+                    <li><strong>Ctrl+7</strong> - Notas | <strong>Ctrl+8</strong> - Plano | <strong>Ctrl+9</strong> - Links</li>
                     <li><strong>Enter</strong> - Confirma/envia formularios</li>
                     <li><strong>Esc</strong> - Fecha dialogos</li>
                 </ul>
